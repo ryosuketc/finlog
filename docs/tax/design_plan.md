@@ -190,6 +190,8 @@ finlog gsu \
   [--carryover <path_to_previous_year_json>] \
   [--output-carryover <path_to_save_next_year_json>] \
   [--use-cache / --no-cache] \
+  [--dev] \
+  [--folder-id <google_drive_folder_id>] \
   [--credentials <path_to_google_oauth_json>] \
   [--service-account <path_to_service_account_json>]
 ```

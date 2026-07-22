@@ -124,6 +124,8 @@ finlog gsu \
 | `--carryover` | Path to previous year's carryover JSON file. | `None` |
 | `--output-carryover` | Path to save current year's carryover JSON file. | `user_data/carryover_<YEAR>.json` |
 | `--use-cache / --no-cache` | Enable or disable local FX rate CSV caching (`user_data/fx_cache.csv`). | `True` |
+| `--dev` | Output Google Spreadsheet to Development testing Drive folder (`1HjukZ03FPEQde6R4Ky_lnAGYL8VL2Jxn`). | `False` |
+| `--folder-id` | Explicitly specify destination Google Drive Folder ID. | `None` |
 | `--credentials` | Optional custom path to OAuth `credentials.json`. | `None` |
 | `--service-account` | Optional custom path to Service Account JSON. | `None` |
 
