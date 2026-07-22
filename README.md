@@ -96,6 +96,8 @@ finlog credit \
 | `--card` | | Path to credit card statement CSV file. **[Required]** | |
 | `--card-type` | | Type of credit card (`visa`, `ana_visa`, `amex`, `amex_proper`). **[Required]** | |
 | `--include-all-accounts` | | Include Zaim `Paid` accounts in addition to `Unpaid` accounts. | `False` |
+| `--dev` | | Output Google Spreadsheet to Development testing Drive folder (`1HjukZ03FPEQde6R4Ky_lnAGYL8VL2Jxn`). | `False` |
+| `--folder-id` | | Explicitly specify destination Google Drive Folder ID. | `None` |
 | `--credentials` | `-c` | Optional custom path to OAuth `credentials.json`. | `None` |
 | `--service-account` | | Optional custom path to Service Account JSON. | `None` |
 

@@ -17,6 +17,7 @@ from finlog.models.tax import CarryoverState
 from finlog.tax.fx_provider import FXProvider
 from finlog.tax.engine import GSUTaxEngine, GSUTaxCalculationResult
 from finlog.matching.engine import ReconciliationEngine
+from finlog.config import get_drive_folder_id
 
 
 @click.group()
@@ -33,7 +34,19 @@ def main():
 @click.option("--credentials", "-c", type=click.Path(exists=True), default=None, help="Path to OAuth credentials JSON file")
 @click.option("--service-account", type=click.Path(exists=True), default=None, help="Path to Service Account JSON file")
 @click.option("--include-all-accounts", is_flag=True, default=False, help="Include all Zaim accounts (including Paid) for matching")
-def credit(log: str, log_type: str, card: str, card_type: str, credentials: Optional[str], service_account: Optional[str], include_all_accounts: bool):
+@click.option("--dev", is_flag=True, default=False, help="Use development Google Drive destination folder")
+@click.option("--folder-id", type=str, default=None, help="Explicit Google Drive destination folder ID")
+def credit(
+    log: str,
+    log_type: str,
+    card: str,
+    card_type: str,
+    credentials: Optional[str],
+    service_account: Optional[str],
+    include_all_accounts: bool,
+    dev: bool,
+    folder_id: Optional[str],
+):
     """Reconcile personal finance log against a credit card statement."""
     click.echo(f"Processing finlog credit: log={log} ({log_type}), card={card} ({card_type})")
 
@@ -105,12 +118,14 @@ def credit(log: str, log_type: str, card: str, card_type: str, credentials: Opti
     }
 
     # 7. Write output
+    target_folder_id = get_drive_folder_id(dev=dev, override_id=folder_id)
     writer = SheetsWriter()
     output_msg = writer.write_output(
         title,
         sheets_data,
         service_account_path=service_account,
         credentials_path=credentials,
+        folder_id=target_folder_id,
     )
 
     click.echo(f"\nReconciliation Summary for {card_label}:")
@@ -128,6 +143,8 @@ def credit(log: str, log_type: str, card: str, card_type: str, credentials: Opti
 @click.option("--use-cache/--no-cache", default=True, help="Use local FX rate CSV cache (default: True)")
 @click.option("--credentials", "-c", type=click.Path(exists=True), default=None, help="Path to OAuth credentials JSON file")
 @click.option("--service-account", type=click.Path(exists=True), default=None, help="Path to Service Account JSON file")
+@click.option("--dev", is_flag=True, default=False, help="Use development Google Drive destination folder")
+@click.option("--folder-id", type=str, default=None, help="Explicit Google Drive destination folder ID")
 def gsu(
     vests: str,
     dividend: str,
@@ -137,6 +154,8 @@ def gsu(
     use_cache: bool,
     credentials: Optional[str],
     service_account: Optional[str],
+    dev: bool,
+    folder_id: Optional[str],
 ):
     """Calculate Japanese tax return (確定申告) tables for Google Stock Units (GSU)."""
     click.echo(f"Processing finlog gsu: vests={vests}, dividend={dividend}, sales={sales}")
@@ -201,12 +220,14 @@ def gsu(
     }
 
     # 7. Write output
+    target_folder_id = get_drive_folder_id(dev=dev, override_id=folder_id)
     writer = SheetsWriter()
     output_msg = writer.write_output(
         title,
         sheets_data,
         service_account_path=service_account,
         credentials_path=credentials,
+        folder_id=target_folder_id,
     )
 
     click.echo("\nTax Calculation Summary:")

@@ -141,11 +141,11 @@ The exporter (`finlog.io.sheets_writer`) creates a streamlined **4-Tab Google Sp
 - Uses `open_browser=False` in `run_local_server` to prevent terminal CUI browser launches (e.g. `lynx`) in headless environments.
 
 ### Google Drive Target Folder (`finlog/config.py`)
-- Spreadsheets are directly created inside a designated Google Drive Folder ID defined in `finlog/config.py`:
-  ```python
-  DRIVE_FOLDER_ID = "1xUMheq3xhaY14JagZoDesQpQauClWDXe"
-  ```
-- Exporter passes `folder_id=DRIVE_FOLDER_ID` when invoking `gc.create()`.
+- Spreadsheets are created in a designated Google Drive Folder ID defined in `finlog/config.py`:
+  - **Production Folder (`DRIVE_FOLDER_ID_PROD`)**: `"1xUMheq3xhaY14JagZoDesQpQauClWDXe"` (Default)
+  - **Development Folder (`DRIVE_FOLDER_ID_DEV`)**: `"1HjukZ03FPEQde6R4Ky_lnAGYL8VL2Jxn"`
+- Passing `--dev` on the CLI automatically routes output to the development folder during testing.
+- Passing `--folder-id <ID>` explicitly overrides the target folder ID.
 
 ### Creation Timestamp & Auto-Title
 - Auto-generated spreadsheet titles append a JST (Japan Standard Time, UTC+9) creation timestamp suffix to ensure uniqueness and auditability:

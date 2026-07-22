@@ -42,3 +42,40 @@ def test_sheets_writer_oauth_success():
             res = writer.write_output("Test Title", sheets_data)
             assert "Google Spreadsheet created successfully:" in res
             assert mock_sh.url in res
+
+
+def test_get_drive_folder_id():
+    from finlog.config import (
+        get_drive_folder_id,
+        DRIVE_FOLDER_ID_PROD,
+        DRIVE_FOLDER_ID_DEV,
+    )
+
+    # Default -> PROD
+    assert get_drive_folder_id() == DRIVE_FOLDER_ID_PROD
+    assert get_drive_folder_id(dev=False) == DRIVE_FOLDER_ID_PROD
+
+    # dev=True -> DEV
+    assert get_drive_folder_id(dev=True) == DRIVE_FOLDER_ID_DEV
+
+    # override_id
+    assert get_drive_folder_id(override_id="custom-folder") == "custom-folder"
+    assert get_drive_folder_id(dev=True, override_id="custom-folder") == "custom-folder"
+
+
+def test_sheets_writer_custom_folder_id():
+    writer = SheetsWriter()
+    sheets_data = {"Sheet1": [["a", "b"], [1, 2]]}
+
+    mock_gc = MagicMock()
+    mock_sh = MagicMock()
+    mock_sh.url = "https://docs.google.com/spreadsheets/d/test-id"
+    mock_ws = MagicMock()
+    mock_sh.sheet1 = mock_ws
+    mock_gc.create.return_value = mock_sh
+
+    with patch("gspread.oauth", return_value=mock_gc):
+        with patch.object(Path, "exists", return_value=True):
+            writer.write_output("Test Title", sheets_data, folder_id="dev-folder-123")
+            mock_gc.create.assert_called_once_with("Test Title", folder_id="dev-folder-123")
+

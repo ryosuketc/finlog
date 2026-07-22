@@ -3,7 +3,7 @@ import os
 import click
 from pathlib import Path
 from typing import Dict, List, Any, Optional
-from finlog.config import DRIVE_FOLDER_ID
+from finlog.config import DRIVE_FOLDER_ID, get_drive_folder_id
 
 try:
     import gspread
@@ -22,6 +22,7 @@ class SheetsWriter:
         service_account_path: Optional[str] = None,
         credentials_path: Optional[str] = None,
         output_dir: Optional[Path] = None,
+        folder_id: Optional[str] = None,
     ) -> str:
         """Write multi-tab data to Google Sheets (via OAuth or Service Account) or fallback to local CSVs."""
         if HAS_GSPREAD:
@@ -38,7 +39,7 @@ class SheetsWriter:
                         gc = self._get_oauth_client(default_creds, authorized_user)
 
                 if gc:
-                    return self._create_spreadsheet(gc, title, sheets_data)
+                    return self._create_spreadsheet(gc, title, sheets_data, folder_id=folder_id)
 
             except Exception as e:
                 print(f"[Warning] Google Sheets export failed ({e}). Falling back to local CSV output.")
@@ -72,9 +73,11 @@ class SheetsWriter:
         gc: Any,
         title: str,
         sheets_data: Dict[str, List[List[Any]]],
+        folder_id: Optional[str] = None,
     ) -> str:
-        if DRIVE_FOLDER_ID:
-            sh = gc.create(title, folder_id=DRIVE_FOLDER_ID)
+        target_folder_id = folder_id or DRIVE_FOLDER_ID
+        if target_folder_id:
+            sh = gc.create(title, folder_id=target_folder_id)
         else:
             sh = gc.create(title)
 
