@@ -111,13 +111,13 @@ Matching uses a sequential 2-phase architecture to maximize accuracy:
 
 1. **Phase 1: 1-to-1 Exact Matching**:
    Validates pairs using hard constraints followed by soft scoring:
-   - **Hard Constraints**: Exact Amount Match (`abs(card.amount) == abs(zaim.amount)`), Account Alignment (`zaim.account` in `allowed_accounts`), Date Window Tolerance ($\pm 5$ days).
-   - **Multi-Score Weighting**: $S_{\text{total}} = 0.4 \times S_{\text{date}} + 0.6 \times S_{\text{text}}$ (where $S_{\text{text}}$ uses native alias mappings from `finlog/matching/merchant_map.json`). Pairs with $S_{\text{total}} \ge 0.4$ are accepted; highest score wins.
+   - **Hard Constraints**: Exact Amount Match (`abs(card.amount) == abs(zaim.amount)`), Account Alignment (`zaim.account` in `allowed_accounts`), Date Window Tolerance ($\pm 5$ days default, configurable via `match_window_days` / `--match-window-days`).
+   - **Multi-Score Weighting**: $S_{\text{total}} = 0.4 \times S_{\text{date}} + 0.6 \times S_{\text{text}}$ (where $S_{\text{text}}$ uses `self.strategy.similarity()` with native alias mappings from `finlog/matching/merchant_map.json`). Pairs with $S_{\text{total}} \ge 0.4$ are accepted; highest score wins.
 
 2. **Phase 2: Many-to-One (N:1) Bundled Matching**:
-   Executes exclusively on remaining unmatched card and Zaim transactions to reconcile bundled charges (e.g. ¥100 + ¥200 Zaim entries matching a single ¥300 card charge):
-   - **Exact Filters**: Filters unmatched Zaim candidates sharing exact account, exact date (`card_tx.date == zaim_tx.date`), and exact normalized merchant (`normalize(payee)`).
-   - **Subset-Sum Search**: Searches for a subset of 2 to 5 Zaim transactions whose sum matches the single credit card charge amount.
+   Executes exclusively on remaining unmatched card and Zaim transactions to reconcile bundled charges (e.g. ¥100 + ¥200 Zaim entries matching a single ¥300 card charge, or ¥13,000 + -¥500 cashback entries matching a single ¥12,500 card charge):
+   - **Exact Filters**: Filters unmatched Zaim candidates sharing exact account, exact date (`card_tx.date == zaim_tx.date`), and broad merchant match (`similarity(payee) >= 0.4`).
+   - **Subset-Sum Search**: Searches for a subset of 2 to 5 Zaim transactions whose signed sum (`abs(sum(z.amount))`) matches the single credit card charge amount.
    - **Output Status**: Bundled matches receive status `Matched (Bundled)` in both `Credit View` (with comma-separated Zaim IDs) and `Zaim View`.
 
 ---

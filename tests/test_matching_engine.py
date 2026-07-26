@@ -88,14 +88,14 @@ def test_reconciliation_engine_matching():
     ]
 
     # Test with unpaid_only=True (default)
-    engine_unpaid = ReconciliationEngine(similarity_strategy=SimpleContainsStrategy(), date_tolerance_days=5, unpaid_only=True)
+    engine_unpaid = ReconciliationEngine(similarity_strategy=SimpleContainsStrategy(), match_window_days=5, unpaid_only=True)
     result_unpaid = engine_unpaid.reconcile(card_transactions=card_txs, zaim_transactions=zaim_txs)
 
     assert len(result_unpaid.matched_pairs) == 1
     assert result_unpaid.matched_pairs[0].zaim_tx.transaction_id == "ZAIM-00001"
 
     # Test with unpaid_only=False (all accounts)
-    engine_all = ReconciliationEngine(similarity_strategy=SimpleContainsStrategy(), date_tolerance_days=5, unpaid_only=False)
+    engine_all = ReconciliationEngine(similarity_strategy=SimpleContainsStrategy(), match_window_days=5, unpaid_only=False)
     result_all = engine_all.reconcile(card_transactions=card_txs, zaim_transactions=zaim_txs)
 
     assert len(result_all.matched_pairs) == 1
@@ -202,6 +202,8 @@ def test_reconciliation_engine_bundled_matching():
     credit_entry = result.credit_view_entries[0]
     assert credit_entry["match_status"] == "Matched (Bundled)"
     assert credit_entry["matched_transaction_id"] == "ZAIM-00001, ZAIM-00002"
+    assert len(result.bundled_matches) == 1
+    assert result.bundled_matches[0].card_tx.transaction_id == "VISA-00001"
 
     # Check Zaim View
     z1 = next(z for z in result.zaim_view_entries if z["transaction_id"] == "ZAIM-00001")
@@ -211,6 +213,99 @@ def test_reconciliation_engine_bundled_matching():
     assert z1["matched_transaction_id"] == "VISA-00001"
     assert z2["match_status"] == "Matched (Bundled)"
     assert z2["matched_transaction_id"] == "VISA-00001"
+
+
+def test_reconciliation_engine_bundled_matching_with_negative_amounts():
+    """Test Phase 2 bundled N:1 matching with negative amounts (discounts/cashback)."""
+    card_txs = [
+        CreditCardTransaction(
+            transaction_id="VISA-00001",
+            card_company="ANA VISA Platinum",
+            date=datetime.date(2026, 6, 16),
+            amount=12500,
+            payee_merchant="ふるなびマネー",
+            raw_row_index=1,
+        )
+    ]
+
+    zaim_txs = [
+        FinanceLogTransaction(
+            transaction_id="ZAIM-00578",
+            platform="Zaim",
+            type="expense",
+            date=datetime.date(2026, 6, 16),
+            year="2026",
+            month="2026-06",
+            account="ANA VISA Platinum Unpaid",
+            amount=13000,
+            payee_payer="ふるなび",
+        ),
+        FinanceLogTransaction(
+            transaction_id="ZAIM-00579",
+            platform="Zaim",
+            type="expense",
+            date=datetime.date(2026, 6, 16),
+            year="2026",
+            month="2026-06",
+            account="ANA VISA Platinum Unpaid",
+            amount=-500,
+            payee_payer="ふるなび",
+        ),
+    ]
+
+    engine = ReconciliationEngine(unpaid_only=True)
+    result = engine.reconcile(card_transactions=card_txs, zaim_transactions=zaim_txs)
+
+    credit_entry = result.credit_view_entries[0]
+    assert credit_entry["match_status"] == "Matched (Bundled)"
+    assert credit_entry["matched_transaction_id"] == "ZAIM-00578, ZAIM-00579"
+
+
+def test_reconciliation_engine_bundled_matching_broad_merchant():
+    """Test Phase 2 bundled N:1 matching using broad merchant matching without merchant_map entry."""
+    card_txs = [
+        CreditCardTransaction(
+            transaction_id="VISA-00003",
+            card_company="ANA VISA Platinum",
+            date=datetime.date(2026, 6, 18),
+            amount=2750,
+            payee_merchant="遊舎工房Webストア",
+            raw_row_index=1,
+        )
+    ]
+
+    zaim_txs = [
+        FinanceLogTransaction(
+            transaction_id="ZAIM-00606",
+            platform="Zaim",
+            type="expense",
+            date=datetime.date(2026, 6, 18),
+            year="2026",
+            month="2026-06",
+            account="ANA VISA Platinum Unpaid",
+            amount=2200,
+            payee_payer="遊舎工房",
+        ),
+        FinanceLogTransaction(
+            transaction_id="ZAIM-00607",
+            platform="Zaim",
+            type="expense",
+            date=datetime.date(2026, 6, 18),
+            year="2026",
+            month="2026-06",
+            account="ANA VISA Platinum Unpaid",
+            amount=550,
+            payee_payer="遊舎工房",
+        ),
+    ]
+
+    engine = ReconciliationEngine(unpaid_only=True)
+    result = engine.reconcile(card_transactions=card_txs, zaim_transactions=zaim_txs)
+
+    credit_entry = result.credit_view_entries[0]
+    assert credit_entry["match_status"] == "Matched (Bundled)"
+    assert credit_entry["matched_transaction_id"] == "ZAIM-00606, ZAIM-00607"
+
 
 
 

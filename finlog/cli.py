@@ -34,6 +34,7 @@ def main():
 @click.option("--credentials", "-c", type=click.Path(exists=True), default=None, help="Path to OAuth credentials JSON file")
 @click.option("--service-account", type=click.Path(exists=True), default=None, help="Path to Service Account JSON file")
 @click.option("--include-all-accounts", is_flag=True, default=False, help="Include all Zaim accounts (including Paid) for matching")
+@click.option("--match-window-days", type=int, default=5, help="Match window in days for Phase 1 matching (default: 5)")
 @click.option("--dev", is_flag=True, default=False, help="Use development Google Drive destination folder")
 @click.option("--folder-id", type=str, default=None, help="Explicit Google Drive destination folder ID")
 def credit(
@@ -44,6 +45,7 @@ def credit(
     credentials: Optional[str],
     service_account: Optional[str],
     include_all_accounts: bool,
+    match_window_days: int,
     dev: bool,
     folder_id: Optional[str],
 ):
@@ -81,7 +83,7 @@ def credit(
     click.echo(f"Parsed {len(zaim_txs)} Zaim transactions and {len(card_txs)} {card_label} card transactions.")
 
     # 4. Reconcile transactions
-    engine = ReconciliationEngine(unpaid_only=not include_all_accounts)
+    engine = ReconciliationEngine(match_window_days=match_window_days, unpaid_only=not include_all_accounts)
     if card_txs:
         with click.progressbar(
             length=len(card_txs),
@@ -128,8 +130,9 @@ def credit(
         folder_id=target_folder_id,
     )
 
+    total_matched = len(result.matched_pairs) + len(result.bundled_matches)
     click.echo(f"\nReconciliation Summary for {card_label}:")
-    click.echo(f"  - Matched Transactions: {len(result.matched_pairs)}")
+    click.echo(f"  - Matched Transactions: {total_matched} (1:1: {len(result.matched_pairs)}, Bundled: {len(result.bundled_matches)})")
     click.echo(f"  - Unmatched Card Charges: {len(result.unmatched_card_txs)}")
     click.echo(f"\n{output_msg}")
 

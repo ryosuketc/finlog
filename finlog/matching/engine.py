@@ -39,8 +39,15 @@ class MatchedPair:
 
 
 @dataclass
+class BundledMatch:
+    card_tx: CreditCardTransaction
+    zaim_txs: List[FinanceLogTransaction]
+
+
+@dataclass
 class ReconciliationResult:
     matched_pairs: List[MatchedPair]
+    bundled_matches: List[BundledMatch]
     unmatched_card_txs: List[CreditCardTransaction]
     zaim_view_entries: List[Dict[str, Any]]
     credit_view_entries: List[Dict[str, Any]]
@@ -52,11 +59,11 @@ class ReconciliationEngine:
     def __init__(
         self,
         similarity_strategy: Optional[BaseSimilarityStrategy] = None,
-        date_tolerance_days: int = 5,
+        match_window_days: int = 5,
         unpaid_only: bool = True,
     ):
         self.strategy = similarity_strategy or SimpleContainsStrategy()
-        self.date_tolerance_days = date_tolerance_days
+        self.match_window_days = match_window_days
         self.unpaid_only = unpaid_only
 
     def reconcile(
@@ -68,6 +75,7 @@ class ReconciliationEngine:
         if not card_transactions:
             return ReconciliationResult(
                 matched_pairs=[],
+                bundled_matches=[],
                 unmatched_card_txs=[],
                 zaim_view_entries=[self._format_zaim_view_entry(z, "Unmatched") for z in zaim_transactions],
                 credit_view_entries=[],
@@ -75,8 +83,8 @@ class ReconciliationEngine:
 
         # Calculate card statement date bounds
         card_dates = [c.date for c in card_transactions]
-        min_card_date = min(card_dates) - datetime.timedelta(days=self.date_tolerance_days)
-        max_card_date = max(card_dates) + datetime.timedelta(days=self.date_tolerance_days)
+        min_card_date = min(card_dates) - datetime.timedelta(days=self.match_window_days)
+        max_card_date = max(card_dates) + datetime.timedelta(days=self.match_window_days)
 
         matched_card_ids = set()
         matched_zaim_ids = set()
@@ -110,7 +118,7 @@ class ReconciliationEngine:
 
                 # Hard Constraint 3: Date Tolerance Window
                 date_diff = abs((card_tx.date - zaim_tx.date).days)
-                if date_diff > self.date_tolerance_days:
+                if date_diff > self.match_window_days:
                     continue
 
                 # Soft Ranking Score
@@ -135,12 +143,12 @@ class ReconciliationEngine:
         # Phase 2: Bundled (N:1) Matching for unmatched card transactions
         bundled_card_matches: Dict[str, List[str]] = {}
         bundled_zaim_matches: Dict[str, str] = {}
+        bundled_matches: List[BundledMatch] = []
 
         for card_tx in unmatched_card_txs:
             allowed_accounts = get_card_accounts(card_tx.card_company, unpaid_only=self.unpaid_only)
-            norm_card_merchant = self.strategy.normalize(card_tx.payee_merchant)
 
-            # Filter candidate Zaim transactions (unmatched, exact account, exact date, exact normalized merchant)
+            # Filter candidate Zaim transactions (unmatched, exact account, exact date, broad merchant match)
             candidates = []
             for zaim_tx in zaim_transactions:
                 if zaim_tx.transaction_id in matched_zaim_ids:
@@ -159,9 +167,9 @@ class ReconciliationEngine:
                 if card_tx.date != zaim_tx.date:
                     continue
 
-                # Exact Normalized Merchant Match
-                norm_zaim_merchant = self.strategy.normalize(zaim_tx.payee_payer or "")
-                if norm_card_merchant != norm_zaim_merchant:
+                # Broad Merchant Match using similarity strategy
+                text_score = self.strategy.similarity(card_tx.payee_merchant, zaim_tx.payee_payer or "")
+                if text_score < 0.4:
                     continue
 
                 candidates.append(zaim_tx)
@@ -172,6 +180,7 @@ class ReconciliationEngine:
                     matched_card_ids.add(card_tx.transaction_id)
                     z_ids = [z.transaction_id for z in matching_subset]
                     bundled_card_matches[card_tx.transaction_id] = z_ids
+                    bundled_matches.append(BundledMatch(card_tx=card_tx, zaim_txs=matching_subset))
                     for z in matching_subset:
                         matched_zaim_ids.add(z.transaction_id)
                         bundled_zaim_matches[z.transaction_id] = card_tx.transaction_id
@@ -231,6 +240,7 @@ class ReconciliationEngine:
 
         return ReconciliationResult(
             matched_pairs=matched_pairs,
+            bundled_matches=bundled_matches,
             unmatched_card_txs=unmatched_card_txs,
             zaim_view_entries=zaim_view_entries,
             credit_view_entries=credit_view_entries,
@@ -265,7 +275,7 @@ class ReconciliationEngine:
         target = abs(target_amount)
         for k in range(2, min(len(candidates), max_size) + 1):
             for combo in itertools.combinations(candidates, k):
-                if sum(abs(z.amount) for z in combo) == target:
+                if abs(sum(z.amount for z in combo)) == target:
                     return list(combo)
         return None
 

@@ -19,8 +19,8 @@
 
 ### 💳 Credit Card Reconciliation (`finlog credit`)
 - 🔍 **2-Phase Automated Matching Architecture**:
-  - **Phase 1 (1:1 Matching)**: Matches 1-to-1 transactions using exact amount verification, date proximity ($\pm 5$ days), and merchant containment with native alias normalization (`finlog/matching/merchant_map.json`).
-  - **Phase 2 (N:1 Bundled Matching)**: Reconciles multiple Zaim log entries (e.g., ¥100 + ¥200) bundled into a single credit card charge line (e.g., ¥300) sharing exact date, account, and normalized merchant name.
+  - **Phase 1 (1:1 Matching)**: Matches 1-to-1 transactions using exact amount verification, date proximity ($\pm 5$ days default, configurable via `--match-window-days`), and broad merchant matching with containment and native alias normalization (`finlog/matching/merchant_map.json`).
+  - **Phase 2 (N:1 Bundled Matching)**: Reconciles multiple Zaim log entries (e.g., ¥100 + ¥200, or ¥13,000 + -¥500 cashback) bundled into a single credit card charge line (e.g., ¥300 or ¥12,500) sharing exact date, account, and broad merchant match (`similarity() >= 0.4`).
 - 🏦 **Card Company to Zaim Account Mapping**: Automatically maps credit cards (VISA, AMEX) to Zaim `Unpaid` and `Paid` accounts.
 - 📊 **Streamlined Verification Sheets**: Generates multi-tab Google Spreadsheets featuring `Zaim View`, `Credit View` (sorted by cardholder and date ASC, flagging bundled matches as `Matched (Bundled)`), and raw data logs (sorted by date ASC).
 
@@ -96,6 +96,7 @@ finlog credit \
 | `--card` | | Path to credit card statement CSV file. **[Required]** | |
 | `--card-type` | | Type of credit card (`visa`, `ana_visa`, `amex`, `amex_proper`). **[Required]** | |
 | `--include-all-accounts` | | Include Zaim `Paid` accounts in addition to `Unpaid` accounts. | `False` |
+| `--match-window-days` | | Match window in days for Phase 1 matching. | `5` |
 | `--dev` | | Output Google Spreadsheet to Development testing Drive folder (`1HjukZ03FPEQde6R4Ky_lnAGYL8VL2Jxn`). | `False` |
 | `--folder-id` | | Explicitly specify destination Google Drive Folder ID. | `None` |
 | `--credentials` | `-c` | Optional custom path to OAuth `credentials.json`. | `None` |
