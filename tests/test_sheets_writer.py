@@ -42,6 +42,9 @@ def test_sheets_writer_oauth_success():
             res = writer.write_output("Test Title", sheets_data)
             assert "Google Spreadsheet created successfully:" in res
             assert mock_sh.url in res
+            mock_ws.update.assert_called_once_with(
+                sheets_data["Sheet1"], value_input_option="USER_ENTERED"
+            )
 
 
 def test_get_drive_folder_id():

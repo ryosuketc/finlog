@@ -115,7 +115,7 @@ class SheetsWriter:
                     ws = sh.add_worksheet(title=sheet_name, rows=len(rows) + 10, cols=15)
 
                 if rows:
-                    ws.update(rows)
+                    ws.update(rows, value_input_option="USER_ENTERED")
 
         return f"Google Spreadsheet created successfully: {sh.url}"
 
