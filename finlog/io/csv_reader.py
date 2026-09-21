@@ -4,15 +4,33 @@ from typing import List, Union
 
 
 def detect_encoding(file_path: Union[str, Path]) -> str:
-    """Detect file encoding using chardet, normalizing Shift_JIS variants to cp932."""
+    """Detect file encoding deterministically (utf-8-sig / utf-8 -> cp932 -> chardet fallback)."""
     path = Path(file_path)
     if not path.is_file():
         raise FileNotFoundError(f"File not found: {path}")
 
-    with open(path, "rb") as f:
-        raw_bytes = f.read(10000)
+    raw_bytes = path.read_bytes()
 
-    result = chardet.detect(raw_bytes)
+    if raw_bytes.startswith(b"\xef\xbb\xbf"):
+        try:
+            raw_bytes.decode("utf-8-sig")
+            return "utf-8-sig"
+        except UnicodeDecodeError:
+            pass
+
+    try:
+        raw_bytes.decode("utf-8")
+        return "utf-8"
+    except UnicodeDecodeError:
+        pass
+
+    try:
+        raw_bytes.decode("cp932")
+        return "cp932"
+    except UnicodeDecodeError:
+        pass
+
+    result = chardet.detect(raw_bytes[:10000])
     encoding = result.get("encoding") or "utf-8"
 
     if encoding.lower() in ["shift_jis", "cp932", "sjis", "shift-jis"]:

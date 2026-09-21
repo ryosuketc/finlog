@@ -36,3 +36,23 @@ def test_read_csv_lines_file_not_found():
     """Test file not found error."""
     with pytest.raises(FileNotFoundError):
         read_csv_lines(Path("non_existent_file.csv"))
+
+
+def test_detect_encoding_cp932_when_chardet_misclassifies(tmp_path):
+    """Test that valid CP932 CSV is detected as cp932 even if chardet returns cp500."""
+    from unittest.mock import patch
+
+    file_path = tmp_path / "amex_cp932.csv"
+    content = (
+        "ご利用日,データ処理日,ご利用内容,カード会員様名,会員番号 #,金額,海外通貨利用金額,換算レート\r\n"
+        "2026/09/18,2026/09/18,アマゾン　シーオージェーピー　　　　　,YURI TACHIBANA,-23015,713,,\r\n"
+    )
+    file_path.write_bytes(content.encode("cp932"))
+
+    with patch("chardet.detect", return_value={"encoding": "cp500", "confidence": 0.17}):
+        assert detect_encoding(file_path) == "cp932"
+        lines = read_csv_lines(file_path)
+        assert len(lines) == 2
+        assert "ご利用日" in lines[0]
+        assert "2026/09/18" in lines[1]
+
