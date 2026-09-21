@@ -1,3 +1,4 @@
+from unittest.mock import patch
 from click.testing import CliRunner
 from finlog.cli import main
 
@@ -7,21 +8,22 @@ def test_cli_gsu_subcommand_sample_files(tmp_path):
     runner = CliRunner()
     output_carryover_file = tmp_path / "carryover_2024.json"
 
-    result = runner.invoke(
-        main,
-        [
-            "gsu",
-            "--vests",
-            "user_data/tax_sample/tax_report_inputs - Vests.csv",
-            "--dividend",
-            "user_data/tax_sample/tax_report_inputs - Dividend.csv",
-            "--sales",
-            "user_data/tax_sample/tax_report_inputs - Sales.csv",
-            "--output-carryover",
-            str(output_carryover_file),
-            "--use-cache",
-        ],
-    )
+    with patch("finlog.io.sheets_writer.HAS_GSPREAD", False):
+        result = runner.invoke(
+            main,
+            [
+                "gsu",
+                "--vests",
+                "user_data/tax_sample/tax_report_inputs - Vests.csv",
+                "--dividend",
+                "user_data/tax_sample/tax_report_inputs - Dividend.csv",
+                "--sales",
+                "user_data/tax_sample/tax_report_inputs - Sales.csv",
+                "--output-carryover",
+                str(output_carryover_file),
+                "--use-cache",
+            ],
+        )
 
     assert result.exit_code == 0
     assert "Tax Calculation Summary:" in result.output

@@ -1,3 +1,4 @@
+from unittest.mock import patch
 from click.testing import CliRunner
 from finlog.cli import main, sort_raw_card_rows
 
@@ -5,20 +6,21 @@ from finlog.cli import main, sort_raw_card_rows
 def test_cli_credit_visa_local():
     """Test finlog credit subcommand with VISA sample file."""
     runner = CliRunner()
-    result = runner.invoke(
-        main,
-        [
-            "credit",
-            "--log",
-            "user_data/credit_sample/Zaim.20260720044643.csv",
-            "--log-type",
-            "zaim",
-            "--card",
-            "user_data/credit_sample/visa_202607.csv",
-            "--card-type",
-            "visa",
-        ],
-    )
+    with patch("finlog.io.sheets_writer.HAS_GSPREAD", False):
+        result = runner.invoke(
+            main,
+            [
+                "credit",
+                "--log",
+                "user_data/credit_sample/Zaim.20260720044643.csv",
+                "--log-type",
+                "zaim",
+                "--card",
+                "user_data/credit_sample/visa_202607.csv",
+                "--card-type",
+                "visa",
+            ],
+        )
 
     assert result.exit_code == 0
     assert "finlog credit" in result.output
@@ -28,20 +30,21 @@ def test_cli_credit_visa_local():
 def test_cli_credit_amex_local():
     """Test finlog credit subcommand with AMEX sample file."""
     runner = CliRunner()
-    result = runner.invoke(
-        main,
-        [
-            "credit",
-            "--log",
-            "user_data/credit_sample/Zaim.20260720044643.csv",
-            "--log-type",
-            "zaim",
-            "--card",
-            "user_data/credit_sample/amex_2026-06-21.csv",
-            "--card-type",
-            "amex",
-        ],
-    )
+    with patch("finlog.io.sheets_writer.HAS_GSPREAD", False):
+        result = runner.invoke(
+            main,
+            [
+                "credit",
+                "--log",
+                "user_data/credit_sample/Zaim.20260720044643.csv",
+                "--log-type",
+                "zaim",
+                "--card",
+                "user_data/credit_sample/amex_2026-06-21.csv",
+                "--card-type",
+                "amex",
+            ],
+        )
 
     assert result.exit_code == 0
     assert "finlog credit" in result.output

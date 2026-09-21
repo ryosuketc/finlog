@@ -30,21 +30,38 @@ class SheetsWriter:
                 gc = None
                 if service_account_path and os.path.exists(service_account_path):
                     gc = gspread.service_account(filename=service_account_path)
-                elif credentials_path and os.path.exists(credentials_path):
-                    gc = gspread.oauth(credentials_filename=credentials_path)
-                else:
-                    default_creds = Path.home() / ".config" / "gspread" / "credentials.json"
-                    authorized_user = Path.home() / ".config" / "gspread" / "authorized_user.json"
-                    if default_creds.exists():
-                        gc = self._get_oauth_client(default_creds, authorized_user)
-
-                if gc:
                     return self._create_spreadsheet(gc, title, sheets_data, folder_id=folder_id)
+
+                creds_path = (
+                    Path(credentials_path)
+                    if credentials_path
+                    else Path.home() / ".config" / "gspread" / "credentials.json"
+                )
+                authorized_user = Path.home() / ".config" / "gspread" / "authorized_user.json"
+
+                if creds_path.exists():
+                    try:
+                        gc = self._get_oauth_client(creds_path, authorized_user)
+                        return self._create_spreadsheet(gc, title, sheets_data, folder_id=folder_id)
+                    except Exception as oauth_err:
+                        if self._is_invalid_grant_error(oauth_err):
+                            print(
+                                "[Notice] OAuth token expired or revoked (invalid_grant). "
+                                "Removing cached token and starting re-authentication..."
+                            )
+                            if authorized_user.exists():
+                                authorized_user.unlink()
+                            gc = self._run_oauth_flow(creds_path, authorized_user)
+                            return self._create_spreadsheet(gc, title, sheets_data, folder_id=folder_id)
+                        raise
 
             except Exception as e:
                 print(f"[Warning] Google Sheets export failed ({e}). Falling back to local CSV output.")
 
         return self._write_local_csvs(title, sheets_data, output_dir=output_dir)
+
+    def _is_invalid_grant_error(self, exc: Exception) -> bool:
+        return "invalid_grant" in str(exc)
 
     def _get_oauth_client(self, creds_path: Path, auth_user_path: Path) -> Any:
         if auth_user_path.exists():
@@ -52,7 +69,9 @@ class SheetsWriter:
                 credentials_filename=str(creds_path),
                 authorized_user_filename=str(auth_user_path),
             )
+        return self._run_oauth_flow(creds_path, auth_user_path)
 
+    def _run_oauth_flow(self, creds_path: Path, auth_user_path: Path) -> Any:
         from google_auth_oauthlib.flow import InstalledAppFlow
         scopes = [
             "https://www.googleapis.com/auth/spreadsheets",
