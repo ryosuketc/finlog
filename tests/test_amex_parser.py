@@ -18,7 +18,7 @@ def test_amex_parser_basic_sample_lines():
 
     t1 = transactions[0]
     assert t1.transaction_id == "AMEX-00001"
-    assert t1.card_company == "Amex Proper"
+    assert t1.card_name == "Amex Proper"
     assert t1.date.strftime("%Y-%m-%d") == "2026-06-21"
     assert t1.payee_merchant == "アマゾン JP マーケットプレイス"
     assert t1.cardholder == "TARO YAMADA"

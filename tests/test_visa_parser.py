@@ -33,7 +33,7 @@ def test_visa_parser_sample_lines():
 
     t1 = transactions[0]
     assert t1.transaction_id == "VISA-00001"
-    assert t1.card_company == "ANA VISA Platinum"
+    assert t1.card_name == "ANA VISA Platinum"
     assert t1.cardholder == "山田 太郎 様"
     assert t1.card_number_suffix == "1234-56**"
     assert t1.date.strftime("%Y-%m-%d") == "2026-05-16"

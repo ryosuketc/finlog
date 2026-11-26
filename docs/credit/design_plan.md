@@ -81,7 +81,7 @@ flowchart LR
 Two domain dataclasses manage data representation cleanly:
 
 1. **`CreditCardTransaction`**:
-   - Holds card statement attributes: `transaction_id`, `card_company`, `date`, `amount`, `payee_merchant`, `cardholder`, `card_number_suffix`, `note`, `raw_row_index`.
+   - Holds card statement attributes: `transaction_id`, `card_name`, `date`, `amount`, `payee_merchant`, `cardholder`, `card_number_suffix`, `note`, `raw_row_index`.
 2. **`FinanceLogTransaction`**:
    - Retains Zaim budgeting metadata: `transaction_id`, `platform`, `type` (`expense`/`income`/`transfer`), `date`, `year`, `month`, `account` (e.g. `ANA VISA Platinum Unpaid`), `amount`, `category`, `subcategory`, `item`, `payee_payer`, `tag_raw`, `tag_mod`, `note`.
 

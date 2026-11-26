@@ -271,7 +271,7 @@ def _format_zaim_view_table(entries: List[Dict[str, Any]]) -> List[List[Any]]:
 def _format_credit_view_table(entries: List[Dict[str, Any]]) -> List[List[Any]]:
     header = [
         "transaction_id",
-        "card_company",
+        "card_name",
         "date",
         "amount",
         "payee_merchant",

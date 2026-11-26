@@ -42,7 +42,7 @@ class AmexParser(BaseParser):
 
             tx = CreditCardTransaction(
                 transaction_id=tx_id,
-                card_company="Amex Proper",
+                card_name="Amex Proper",
                 date=dt,
                 amount=amount,
                 payee_merchant=merchant_raw,

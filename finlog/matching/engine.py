@@ -23,10 +23,10 @@ CARD_ACCOUNT_MAPPINGS: Dict[str, Dict[str, Dict[str, List[str]]]] = {
 }
 
 
-def get_card_accounts(card_company: str, unpaid_only: bool = True, cardholder: Optional[str] = None) -> List[str]:
-    """Return allowed Zaim accounts for a card company and cardholder based on unpaid_only flag."""
+def get_card_accounts(card_name: str, unpaid_only: bool = True, cardholder: Optional[str] = None) -> List[str]:
+    """Return allowed Zaim accounts for a card name and cardholder based on unpaid_only flag."""
     holder_type = "family" if cardholder in FAMILY_CARDHOLDERS else "main"
-    c_norm = card_company.lower()
+    c_norm = card_name.lower()
     for key, holders in CARD_ACCOUNT_MAPPINGS.items():
         k_norm = key.lower()
         if k_norm in c_norm or c_norm in k_norm:
@@ -101,7 +101,7 @@ class ReconciliationEngine:
         for idx, card_tx in enumerate(card_transactions):
             if progress_callback:
                 progress_callback(idx + 1, total_cards)
-            allowed_accounts = get_card_accounts(card_tx.card_company, unpaid_only=self.unpaid_only, cardholder=card_tx.cardholder)
+            allowed_accounts = get_card_accounts(card_tx.card_name, unpaid_only=self.unpaid_only, cardholder=card_tx.cardholder)
 
             candidates = []
             for zaim_tx in zaim_transactions:
@@ -115,7 +115,7 @@ class ReconciliationEngine:
                 else:
                     if self.unpaid_only and "unpaid" not in (zaim_tx.account or "").lower():
                         continue
-                    if not self._accounts_match(card_tx.card_company, zaim_tx.account):
+                    if not self._accounts_match(card_tx.card_name, zaim_tx.account):
                         continue
 
                 # Hard Constraint 1: Exact Amount
@@ -152,7 +152,7 @@ class ReconciliationEngine:
         bundled_matches: List[BundledMatch] = []
 
         for card_tx in unmatched_card_txs:
-            allowed_accounts = get_card_accounts(card_tx.card_company, unpaid_only=self.unpaid_only, cardholder=card_tx.cardholder)
+            allowed_accounts = get_card_accounts(card_tx.card_name, unpaid_only=self.unpaid_only, cardholder=card_tx.cardholder)
 
             # Filter candidate Zaim transactions (unmatched, exact account, exact date, broad merchant match)
             candidates = []
@@ -166,7 +166,7 @@ class ReconciliationEngine:
                 else:
                     if self.unpaid_only and "unpaid" not in (zaim_tx.account or "").lower():
                         continue
-                    if not self._accounts_match(card_tx.card_company, zaim_tx.account):
+                    if not self._accounts_match(card_tx.card_name, zaim_tx.account):
                         continue
 
                 # Exact Date Match
@@ -252,9 +252,9 @@ class ReconciliationEngine:
             credit_view_entries=credit_view_entries,
         )
 
-    def _accounts_match(self, card_company: str, zaim_account: str) -> bool:
-        """Check if zaim_account corresponds to card_company."""
-        c_norm = card_company.lower().replace(" ", "")
+    def _accounts_match(self, card_name: str, zaim_account: str) -> bool:
+        """Check if zaim_account corresponds to card_name."""
+        c_norm = card_name.lower().replace(" ", "")
         z_norm = zaim_account.lower().replace(" ", "")
 
         if "amex" in c_norm and "amex" in z_norm:

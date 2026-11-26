@@ -35,7 +35,7 @@ def test_reconciliation_engine_matching():
     card_txs = [
         CreditCardTransaction(
             transaction_id="VISA-00001",
-            card_company="ANA VISA Platinum",
+            card_name="ANA VISA Platinum",
             date=datetime.date(2026, 5, 20),
             amount=10642,
             payee_merchant="焼肉きんぐ三鷹野崎店",
@@ -43,7 +43,7 @@ def test_reconciliation_engine_matching():
         ),
         CreditCardTransaction(
             transaction_id="VISA-00002",
-            card_company="ANA VISA Platinum",
+            card_name="ANA VISA Platinum",
             date=datetime.date(2026, 5, 25),
             amount=5000,
             payee_merchant="未入力カード利用",
@@ -118,7 +118,7 @@ def test_get_card_accounts():
 
 
 @pytest.mark.parametrize(
-    "card_company, unpaid_only, expected",
+    "card_name, unpaid_only, expected",
     [
         ("ANA VISA Platinum", True, ["Yuri ANA VISA Platinum Unpaid"]),
         ("ANA VISA Platinum", False, ["Yuri ANA VISA Platinum Unpaid", "ANA VISA Platinum Paid"]),
@@ -126,14 +126,14 @@ def test_get_card_accounts():
         ("Amex Proper", False, ["Yuri Amex Proper Unpaid", "Amex Proper Paid"]),
     ],
 )
-def test_get_card_accounts_family_cardholder(monkeypatch, card_company, unpaid_only, expected):
+def test_get_card_accounts_family_cardholder(monkeypatch, card_name, unpaid_only, expected):
     from finlog.matching import engine
 
     monkeypatch.setattr(engine, "FAMILY_CARDHOLDERS", frozenset({"FAMILY HOLDER"}))
 
-    assert engine.get_card_accounts(card_company, unpaid_only=unpaid_only, cardholder="FAMILY HOLDER") == expected
-    assert engine.get_card_accounts(card_company, unpaid_only=True, cardholder="MAIN HOLDER") == [
-        engine.CARD_ACCOUNT_MAPPINGS[card_company]["main"]["unpaid"][0]
+    assert engine.get_card_accounts(card_name, unpaid_only=unpaid_only, cardholder="FAMILY HOLDER") == expected
+    assert engine.get_card_accounts(card_name, unpaid_only=True, cardholder="MAIN HOLDER") == [
+        engine.CARD_ACCOUNT_MAPPINGS[card_name]["main"]["unpaid"][0]
     ]
 
 
@@ -144,7 +144,7 @@ def test_reconciliation_engine_matches_each_holder_to_own_account(monkeypatch):
     card_txs = [
         CreditCardTransaction(
             transaction_id=f"VISA-0000{i}",
-            card_company="ANA VISA Platinum",
+            card_name="ANA VISA Platinum",
             date=datetime.date(2026, 11, 1),
             amount=500,
             payee_merchant="コンビニ",
@@ -178,7 +178,7 @@ def test_reconciliation_engine_credit_view_cardholder_and_date_sort():
     card_txs = [
         CreditCardTransaction(
             transaction_id="AMEX-00001",
-            card_company="Amex Proper",
+            card_name="Amex Proper",
             date=datetime.date(2026, 6, 21),
             amount=1000,
             payee_merchant="Store C",
@@ -186,7 +186,7 @@ def test_reconciliation_engine_credit_view_cardholder_and_date_sort():
         ),
         CreditCardTransaction(
             transaction_id="AMEX-00002",
-            card_company="Amex Proper",
+            card_name="Amex Proper",
             date=datetime.date(2026, 6, 19),
             amount=2000,
             payee_merchant="Store B",
@@ -194,7 +194,7 @@ def test_reconciliation_engine_credit_view_cardholder_and_date_sort():
         ),
         CreditCardTransaction(
             transaction_id="AMEX-00003",
-            card_company="Amex Proper",
+            card_name="Amex Proper",
             date=datetime.date(2026, 6, 15),
             amount=500,
             payee_merchant="Store A",
@@ -218,7 +218,7 @@ def test_reconciliation_engine_bundled_matching():
     card_txs = [
         CreditCardTransaction(
             transaction_id="VISA-00001",
-            card_company="ANA VISA Platinum",
+            card_name="ANA VISA Platinum",
             date=datetime.date(2026, 7, 14),
             amount=300,
             payee_merchant="モスのネット注文 東京都 品川区",
@@ -276,7 +276,7 @@ def test_reconciliation_engine_bundled_matching_with_negative_amounts():
     card_txs = [
         CreditCardTransaction(
             transaction_id="VISA-00001",
-            card_company="ANA VISA Platinum",
+            card_name="ANA VISA Platinum",
             date=datetime.date(2026, 6, 16),
             amount=12500,
             payee_merchant="ふるなびマネー",
@@ -322,7 +322,7 @@ def test_reconciliation_engine_bundled_matching_broad_merchant():
     card_txs = [
         CreditCardTransaction(
             transaction_id="VISA-00003",
-            card_company="ANA VISA Platinum",
+            card_name="ANA VISA Platinum",
             date=datetime.date(2026, 6, 18),
             amount=2750,
             payee_merchant="遊舎工房Webストア",

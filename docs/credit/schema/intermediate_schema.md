@@ -15,7 +15,7 @@ This document defines the universal **Credit Card Intermediate Data Model** for 
 | Field Name | Data Type | Nullable | Description | Mapping from Card CSV (Amex / VISA) |
 | :--- | :--- | :--- | :--- | :--- |
 | `transaction_id` | String | No | Unique transaction ID (leftmost column) | Auto-generated (e.g., `AMEX-00001`, `VISA-00001`) |
-| `card_company` | String | No | Card company / product name | `Amex Proper`, `ANA VISA Platinum` |
+| `card_name` | String | No | Card product name | `Amex Proper`, `ANA VISA Platinum` |
 | `date` | Date (YYYY-MM-DD) | No | Transaction date | Parsed from `ご利用日` / `use_date` |
 | `account` | String | No | Mapped Zaim-compatible account name | e.g. `Amex Proper Unpaid`, `ANA VISA Platinum Paid` |
 | `amount` | Numeric | No | Transaction amount in JPY (Integer) | Cleaned numeric from `金額` / `利用金額` |
@@ -35,7 +35,7 @@ The Credit Card Intermediate Schema fields map directly to preprocessed Zaim fie
 | Credit Card Intermediate Field | Corresponding Zaim Preprocessed Field | Matching Criteria |
 | :--- | :--- | :--- |
 | `amount` | `amount` | MUST match exactly |
-| `card_company` | `account` (`accountfrom` for payment) | Mapped account alignment (e.g., Zaim `Amex Proper Unpaid` / `Amex Proper Paid` maps to card `Amex Proper`) |
+| `card_name` | `account` (`accountfrom` for payment) | Mapped account alignment (e.g., Zaim `Amex Proper Unpaid` / `Amex Proper Paid` maps to card `Amex Proper`) |
 | `date` | `date` | Matches within configurable date window (default: ±5 days) |
 | `payee_payer` | `payee_payer` (`merchant`) | Used for merchant verification / auxiliary visual inspection |
 

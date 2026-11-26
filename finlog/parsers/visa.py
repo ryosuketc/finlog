@@ -65,7 +65,7 @@ class VisaParser(BaseParser):
             transactions.append(
                 CreditCardTransaction(
                     transaction_id=self.generate_transaction_id("VISA", tx_count),
-                    card_company="ANA VISA Platinum",
+                    card_name="ANA VISA Platinum",
                     date=self.parse_date(date_str),
                     amount=self.clean_amount(amount),
                     payee_merchant=self.clean_string(merchant),

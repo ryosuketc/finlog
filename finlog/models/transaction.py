@@ -8,7 +8,7 @@ class CreditCardTransaction:
     """Represents a normalized credit card statement transaction."""
 
     transaction_id: str
-    card_company: str
+    card_name: str
     date: datetime.date
     amount: int
     payee_merchant: str

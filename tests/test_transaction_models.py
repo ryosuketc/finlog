@@ -6,7 +6,7 @@ def test_credit_card_transaction_creation_and_to_dict():
     """Test creating CreditCardTransaction and converting to dictionary."""
     t = CreditCardTransaction(
         transaction_id="VISA-00001",
-        card_company="ANA VISA Platinum",
+        card_name="ANA VISA Platinum",
         date=datetime.date(2026, 5, 16),
         amount=134616,
         payee_merchant="フルナビマネー",
@@ -17,13 +17,13 @@ def test_credit_card_transaction_creation_and_to_dict():
     )
 
     assert t.transaction_id == "VISA-00001"
-    assert t.card_company == "ANA VISA Platinum"
+    assert t.card_name == "ANA VISA Platinum"
     assert t.amount == 134616
     assert t.date == datetime.date(2026, 5, 16)
 
     d = t.to_dict()
     assert d["transaction_id"] == "VISA-00001"
-    assert d["card_company"] == "ANA VISA Platinum"
+    assert d["card_name"] == "ANA VISA Platinum"
     assert d["amount"] == 134616
     assert d["date"] == "2026-05-16"
     assert d["payee_merchant"] == "フルナビマネー"
