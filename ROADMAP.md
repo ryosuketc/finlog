@@ -33,6 +33,10 @@ For now the BigQuery pipeline runs by hand and produces the `iryohi_raw` review 
 - [ ] **Automate the BigQuery Pipeline**: Run the saved queries `finlog.merge` (rebuilds the `financeLog.master` table) and `finlog.iryouhi` from the CLI, and write the result to a review sheet. Zaim download, the `raw_Zaim` upload, and the transport database update stay manual.
   - Move both saved queries into the repo as SQL files with the tax year as a parameter.
   - Add the BigQuery scope to the existing user OAuth sign-in, so one sign-in covers Sheets, Drive (for the sheet-backed transport table), and BigQuery in the FinLog BigQuery project.
+- [x] **Export to 医療費集計フォーム**: `finlog tax iryohi export` writes the form rows and a Checks tab from the reviewed sheet.
+- [x] **LLM Review Suggestions**: `finlog tax iryohi annotate` merges suggestions from a Jetski review ([docs/tax/iryohi_review.md](docs/tax/iryohi_review.md)).
+- [ ] **Read the Sheet Directly**: Read iryohi_raw from Google Sheets by URL instead of a downloaded CSV.
+- [ ] **Write the Official Form File**: Fill the National Tax Agency 医療費集計フォーム xlsx directly instead of rows to paste.
 
 ---
 

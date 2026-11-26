@@ -132,6 +132,24 @@ finlog tax gsu \
 
 ---
 
+### 3. 医療費控除 (`finlog tax iryohi`)
+
+Both commands read the `iryohi_raw` tab (the `finlog.iryouhi` BigQuery result) downloaded as CSV. See [docs/tax/iryohi_review.md](docs/tax/iryohi_review.md) for the full flow and the review rules.
+
+```bash
+# Add LLM review suggestions and highlight rows to check
+finlog tax iryohi annotate \
+  --input user_data/tax/2026/iryohi_raw.csv \
+  --suggestions user_data/tax/2026/iryohi_suggestions.csv
+
+# Write 医療費集計フォーム rows (paste at cell B9 of the official form) and a Checks tab
+finlog tax iryohi export --input user_data/tax/2026/iryohi_reviewed.csv
+```
+
+Both commands also take `--dev`, `--folder-id`, `--credentials`, and `--service-account`, like `finlog tax gsu`.
+
+---
+
 ## 📚 System Design & Documentation
 
 Detailed architecture design plans and input schema specifications are located under `docs/`:
@@ -143,6 +161,7 @@ Detailed architecture design plans and input schema specifications are located u
   - Design Plan: [docs/tax/design_plan.md](docs/tax/design_plan.md)
   - Acquisition Cost Calculation & Audit Guide: [docs/tax/acquisition_cost_calculation.md](docs/tax/acquisition_cost_calculation.md)
   - Input Schemas: [docs/tax/schema/input_schemas.md](docs/tax/schema/input_schemas.md)
+  - 医療費控除 Review & Export: [docs/tax/iryohi_review.md](docs/tax/iryohi_review.md)
 - 📌 **Development Roadmap**:
   - Roadmap: [ROADMAP.md](ROADMAP.md)
 

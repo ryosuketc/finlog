@@ -2,6 +2,7 @@ import csv
 import io
 import json
 import datetime
+from collections import Counter
 from decimal import Decimal
 import click
 from pathlib import Path
@@ -15,6 +16,7 @@ from finlog.parsers.visa import VisaParser, reformat_visa_rows
 from finlog.parsers.tax import VestsParser, DividendParser, SalesParser
 from finlog.models.tax import CarryoverState
 from finlog.tax.fx_provider import FXProvider, FXRateUnavailableError
+from finlog.tax import iryohi as iryohi_lib
 from finlog.tax.engine import GSUTaxEngine, GSUTaxCalculationResult, InsufficientSharesError, round_2dec
 from finlog.matching.engine import ReconciliationEngine
 from finlog.config import get_drive_folder_id
@@ -22,6 +24,8 @@ from finlog.config import get_drive_folder_id
 # Credit View row colors (Google Sheets palette).
 MANUAL_FIX_COLOR = {"red": 208 / 255, "green": 224 / 255, "blue": 227 / 255}  # light cyan 3, #D0E0E3
 MANUAL_REVIEW_COLOR = {"red": 217 / 255, "green": 234 / 255, "blue": 211 / 255}  # light green 3, #D9EAD3
+# iryohi review rows to check first (Google Sheets palette).
+LLM_FLAG_COLOR = {"red": 255 / 255, "green": 242 / 255, "blue": 204 / 255}  # light yellow 3, #FFF2CC
 
 
 @click.group()
@@ -260,6 +264,105 @@ def gsu(
     click.echo(f"  - Total Foreign Tax Withheld (外国税控除): ¥{result.total_foreign_tax_withheld_jpy:,}")
     click.echo(f"  - Total Capital Gains (譲渡所得): ¥{result.total_capital_gains_jpy:,}")
     click.echo(f"  - Year-End Remaining Shares: {result.year_end_carryover.shares} (Avg Cost: ¥{round_2dec(result.year_end_carryover.average_cost_per_share)}/share)")
+    click.echo(f"\n{output_msg}")
+
+
+@tax.group()
+def iryohi():
+    """医療費控除 (medical expense deduction) commands. Input is the iryohi_raw sheet downloaded as CSV."""
+    pass
+
+
+def _main_year(rows: List[iryohi_lib.RawRow]) -> str:
+    years = Counter(r.values["year"].strip() for r in rows if r.values["year"].strip())
+    return years.most_common(1)[0][0] if years else "unknown"
+
+
+def _now_jst() -> str:
+    jst = datetime.timezone(datetime.timedelta(hours=9))
+    return datetime.datetime.now(jst).strftime("%Y%m%d_%H%M%S")
+
+
+@iryohi.command("export")
+@click.option("--input", "input_path", type=click.Path(exists=True), required=True, help="Reviewed iryohi_raw CSV")
+@click.option("--credentials", "-c", type=click.Path(exists=True), default=None, help="Path to OAuth credentials JSON file")
+@click.option("--service-account", type=click.Path(exists=True), default=None, help="Path to Service Account JSON file")
+@click.option("--dev", is_flag=True, default=False, help="Use development Google Drive destination folder")
+@click.option("--folder-id", type=str, default=None, help="Explicit Google Drive destination folder ID")
+def iryohi_export(
+    input_path: str,
+    credentials: Optional[str],
+    service_account: Optional[str],
+    dev: bool,
+    folder_id: Optional[str],
+):
+    """Write rows with include set as 医療費集計フォーム rows (paste at cell B9 of the official form)."""
+    try:
+        _, rows = iryohi_lib.read_iryohi_raw(input_path)
+        form = iryohi_lib.build_shukei_form(rows)
+    except iryohi_lib.IryohiInputError as e:
+        raise click.ClickException(str(e)) from e
+
+    checks = [["row", "message"]] + [[f.sheet_row, f.message] for f in form.findings]
+    output_msg = SheetsWriter().write_output(
+        f"finlog tax iryohi form: {_main_year(rows)} ({_now_jst()})",
+        {"医療費集計フォーム": iryohi_lib.form_table(form), "Checks": checks},
+        service_account_path=service_account,
+        credentials_path=credentials,
+        folder_id=get_drive_folder_id(dev=dev, override_id=folder_id),
+        frozen_header_sheets={"医療費集計フォーム", "Checks"},
+    )
+
+    click.echo(f"Form rows: {len(form.rows)}")
+    click.echo(f"Total paid (支払った医療費の金額): ¥{form.total_amount:,}")
+    click.echo(f"Total refund (補填される金額): ¥{form.total_refund:,}")
+    click.echo(f"Checks: {len(form.findings)} (see the Checks tab)")
+    for f in form.findings:
+        click.echo(f"  - row {f.sheet_row}: {f.message}")
+    click.echo(f"\n{output_msg}")
+
+
+@iryohi.command("annotate")
+@click.option("--input", "input_path", type=click.Path(exists=True), required=True, help="iryohi_raw CSV")
+@click.option(
+    "--suggestions",
+    type=click.Path(exists=True),
+    required=True,
+    help="Review suggestions CSV: row,payee,amount,suggestion,reason (see docs/tax/iryohi_review.md)",
+)
+@click.option("--credentials", "-c", type=click.Path(exists=True), default=None, help="Path to OAuth credentials JSON file")
+@click.option("--service-account", type=click.Path(exists=True), default=None, help="Path to Service Account JSON file")
+@click.option("--dev", is_flag=True, default=False, help="Use development Google Drive destination folder")
+@click.option("--folder-id", type=str, default=None, help="Explicit Google Drive destination folder ID")
+def iryohi_annotate(
+    input_path: str,
+    suggestions: str,
+    credentials: Optional[str],
+    service_account: Optional[str],
+    dev: bool,
+    folder_id: Optional[str],
+):
+    """Add review suggestions to iryohi_raw and highlight rows to check (llm_flag)."""
+    try:
+        header, rows = iryohi_lib.read_iryohi_raw(input_path)
+        out_header, out_rows, stats = iryohi_lib.annotate(header, rows, iryohi_lib.read_suggestions(suggestions))
+    except iryohi_lib.IryohiInputError as e:
+        raise click.ClickException(str(e)) from e
+
+    output_msg = SheetsWriter().write_output(
+        f"finlog tax iryohi review: {_main_year(rows)} ({_now_jst()})",
+        {"iryohi_review": [out_header] + out_rows},
+        service_account_path=service_account,
+        credentials_path=credentials,
+        folder_id=get_drive_folder_id(dev=dev, override_id=folder_id),
+        frozen_header_sheets={"iryohi_review"},
+        row_highlight_rules={"iryohi_review": [("llm_flag", LLM_FLAG_COLOR)]},
+    )
+
+    click.echo(
+        f"Suggestions: {stats.agree} agree, {stats.disagree} disagree, {stats.unsure} unsure, "
+        f"{stats.missing} rows without a suggestion"
+    )
     click.echo(f"\n{output_msg}")
 
 
