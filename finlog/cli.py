@@ -132,6 +132,7 @@ def credit(
         credentials_path=credentials,
         folder_id=target_folder_id,
         frozen_header_sheets={"Zaim View", "Credit View"},
+        row_highlight_columns={"Credit View": "manual_review"},
     )
 
     total_matched = len(result.matched_pairs) + len(result.bundled_matches)

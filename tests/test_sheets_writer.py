@@ -153,3 +153,46 @@ def test_sheets_writer_freezes_header_row_only_on_listed_sheets():
 
     credit_ws.freeze.assert_called_once_with(rows=1)
     raw_ws.freeze.assert_not_called()
+
+
+def test_sheets_writer_highlights_rows_with_filled_column():
+    writer = SheetsWriter()
+    sheets_data = {
+        "Raw Log": [["raw line"]],
+        "Credit View": [["transaction_id", "note", "manual_review"], ["VISA-00001", "", "ok"]],
+    }
+
+    mock_gc = MagicMock()
+    mock_sh = MagicMock()
+    mock_sh.url = "https://docs.google.com/spreadsheets/d/test-id"
+    mock_sh.sheet1 = MagicMock()
+    credit_ws = MagicMock()
+    credit_ws.id = 123
+    mock_sh.add_worksheet.return_value = credit_ws
+    mock_gc.create.return_value = mock_sh
+
+    with patch("gspread.oauth", return_value=mock_gc):
+        with patch.object(Path, "exists", return_value=True):
+            writer.write_output(
+                "Test Title", sheets_data, row_highlight_columns={"Credit View": "manual_review"}
+            )
+
+    mock_sh.batch_update.assert_called_once_with({
+        "requests": [{
+            "addConditionalFormatRule": {
+                "index": 0,
+                "rule": {
+                    "ranges": [{"sheetId": 123, "startRowIndex": 1}],
+                    "booleanRule": {
+                        "condition": {
+                            "type": "CUSTOM_FORMULA",
+                            "values": [{"userEnteredValue": '=$C2<>""'}],
+                        },
+                        "format": {
+                            "backgroundColor": {"red": 217 / 255, "green": 234 / 255, "blue": 211 / 255},
+                        },
+                    },
+                },
+            },
+        }],
+    })

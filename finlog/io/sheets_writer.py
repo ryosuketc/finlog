@@ -2,7 +2,7 @@ import csv
 import os
 import click
 from pathlib import Path
-from typing import AbstractSet, Dict, List, Any, Optional
+from typing import AbstractSet, Dict, List, Any, Mapping, Optional
 from finlog.config import DRIVE_FOLDER_ID, get_drive_folder_id
 
 try:
@@ -10,6 +10,9 @@ try:
     HAS_GSPREAD = True
 except ImportError:
     HAS_GSPREAD = False
+
+# Google Sheets palette "light green 3" (#D9EAD3).
+ROW_HIGHLIGHT_COLOR = {"red": 217 / 255, "green": 234 / 255, "blue": 211 / 255}
 
 
 class SheetsWriter:
@@ -24,16 +27,31 @@ class SheetsWriter:
         output_dir: Optional[Path] = None,
         folder_id: Optional[str] = None,
         frozen_header_sheets: AbstractSet[str] = frozenset(),
+        row_highlight_columns: Mapping[str, str] = {},
     ) -> str:
-        """Write multi-tab data to Google Sheets (via OAuth or Service Account) or fallback to local CSVs."""
+        """Write multi-tab data to Google Sheets (via OAuth or Service Account) or fallback to local CSVs.
+
+        frozen_header_sheets: sheets whose first row is frozen.
+        row_highlight_columns: sheet name -> header name; rows where that column is
+            not empty get a background color. Both apply to Google Sheets output only.
+        """
+
+        def create(gc: Any) -> str:
+            return self._create_spreadsheet(
+                gc,
+                title,
+                sheets_data,
+                folder_id=folder_id,
+                frozen_header_sheets=frozen_header_sheets,
+                row_highlight_columns=row_highlight_columns,
+            )
+
         if HAS_GSPREAD:
             try:
                 gc = None
                 if service_account_path and os.path.exists(service_account_path):
                     gc = gspread.service_account(filename=service_account_path)
-                    return self._create_spreadsheet(
-                        gc, title, sheets_data, folder_id=folder_id, frozen_header_sheets=frozen_header_sheets
-                    )
+                    return create(gc)
 
                 creds_path = (
                     Path(credentials_path)
@@ -45,9 +63,7 @@ class SheetsWriter:
                 if creds_path.exists():
                     try:
                         gc = self._get_oauth_client(creds_path, authorized_user)
-                        return self._create_spreadsheet(
-                            gc, title, sheets_data, folder_id=folder_id, frozen_header_sheets=frozen_header_sheets
-                        )
+                        return create(gc)
                     except Exception as oauth_err:
                         if self._is_invalid_grant_error(oauth_err):
                             print(
@@ -57,9 +73,7 @@ class SheetsWriter:
                             if authorized_user.exists():
                                 authorized_user.unlink()
                             gc = self._run_oauth_flow(creds_path, authorized_user)
-                            return self._create_spreadsheet(
-                                gc, title, sheets_data, folder_id=folder_id, frozen_header_sheets=frozen_header_sheets
-                            )
+                            return create(gc)
                         raise
 
             except Exception as e:
@@ -101,6 +115,7 @@ class SheetsWriter:
         sheets_data: Dict[str, List[List[Any]]],
         folder_id: Optional[str] = None,
         frozen_header_sheets: AbstractSet[str] = frozenset(),
+        row_highlight_columns: Mapping[str, str] = {},
     ) -> str:
         target_folder_id = folder_id or DRIVE_FOLDER_ID
         if target_folder_id:
@@ -126,8 +141,32 @@ class SheetsWriter:
                     ws.update(rows, value_input_option="USER_ENTERED")
                 if sheet_name in frozen_header_sheets:
                     ws.freeze(rows=1)
+                if sheet_name in row_highlight_columns and rows:
+                    col_index = rows[0].index(row_highlight_columns[sheet_name]) + 1
+                    sh.batch_update(self._row_highlight_request(ws.id, col_index))
 
         return f"Google Spreadsheet created successfully: {sh.url}"
+
+    def _row_highlight_request(self, sheet_id: int, col_index: int) -> Dict[str, Any]:
+        """Build a conditional format rule that colors data rows whose column col_index is not empty."""
+        col_letter = gspread.utils.rowcol_to_a1(1, col_index).rstrip("1")
+        return {
+            "requests": [{
+                "addConditionalFormatRule": {
+                    "index": 0,
+                    "rule": {
+                        "ranges": [{"sheetId": sheet_id, "startRowIndex": 1}],
+                        "booleanRule": {
+                            "condition": {
+                                "type": "CUSTOM_FORMULA",
+                                "values": [{"userEnteredValue": f'=${col_letter}2<>""'}],
+                            },
+                            "format": {"backgroundColor": ROW_HIGHLIGHT_COLOR},
+                        },
+                    },
+                },
+            }],
+        }
 
     def _write_local_csvs(
         self,
