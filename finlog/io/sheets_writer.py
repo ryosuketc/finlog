@@ -2,7 +2,7 @@ import csv
 import os
 import click
 from pathlib import Path
-from typing import AbstractSet, Dict, List, Any, Mapping, Optional
+from typing import AbstractSet, Dict, List, Any, Mapping, Optional, Sequence, Tuple
 from finlog.config import DRIVE_FOLDER_ID, get_drive_folder_id
 
 try:
@@ -11,8 +11,8 @@ try:
 except ImportError:
     HAS_GSPREAD = False
 
-# Google Sheets palette "light green 3" (#D9EAD3).
-ROW_HIGHLIGHT_COLOR = {"red": 217 / 255, "green": 234 / 255, "blue": 211 / 255}
+# (header name, Sheets API Color) pairs. Earlier rules take precedence.
+RowHighlightRules = Sequence[Tuple[str, Mapping[str, float]]]
 
 
 class SheetsWriter:
@@ -27,13 +27,14 @@ class SheetsWriter:
         output_dir: Optional[Path] = None,
         folder_id: Optional[str] = None,
         frozen_header_sheets: AbstractSet[str] = frozenset(),
-        row_highlight_columns: Mapping[str, str] = {},
+        row_highlight_rules: Mapping[str, RowHighlightRules] = {},
     ) -> str:
         """Write multi-tab data to Google Sheets (via OAuth or Service Account) or fallback to local CSVs.
 
         frozen_header_sheets: sheets whose first row is frozen.
-        row_highlight_columns: sheet name -> header name; rows where that column is
-            not empty get a background color. Both apply to Google Sheets output only.
+        row_highlight_rules: sheet name -> (header name, color) pairs; rows where that
+            column is not empty get that background color, and earlier pairs win.
+            Both apply to Google Sheets output only.
         """
 
         def create(gc: Any) -> str:
@@ -43,7 +44,7 @@ class SheetsWriter:
                 sheets_data,
                 folder_id=folder_id,
                 frozen_header_sheets=frozen_header_sheets,
-                row_highlight_columns=row_highlight_columns,
+                row_highlight_rules=row_highlight_rules,
             )
 
         if HAS_GSPREAD:
@@ -115,7 +116,7 @@ class SheetsWriter:
         sheets_data: Dict[str, List[List[Any]]],
         folder_id: Optional[str] = None,
         frozen_header_sheets: AbstractSet[str] = frozenset(),
-        row_highlight_columns: Mapping[str, str] = {},
+        row_highlight_rules: Mapping[str, RowHighlightRules] = {},
     ) -> str:
         target_folder_id = folder_id or DRIVE_FOLDER_ID
         if target_folder_id:
@@ -141,19 +142,24 @@ class SheetsWriter:
                     ws.update(rows, value_input_option="USER_ENTERED")
                 if sheet_name in frozen_header_sheets:
                     ws.freeze(rows=1)
-                if sheet_name in row_highlight_columns and rows:
-                    col_index = rows[0].index(row_highlight_columns[sheet_name]) + 1
-                    sh.batch_update(self._row_highlight_request(ws.id, col_index))
+                if sheet_name in row_highlight_rules and rows:
+                    sh.batch_update(self._row_highlight_request(ws.id, rows[0], row_highlight_rules[sheet_name]))
 
         return f"Google Spreadsheet created successfully: {sh.url}"
 
-    def _row_highlight_request(self, sheet_id: int, col_index: int) -> Dict[str, Any]:
-        """Build a conditional format rule that colors data rows whose column col_index is not empty."""
-        col_letter = gspread.utils.rowcol_to_a1(1, col_index).rstrip("1")
-        return {
-            "requests": [{
+    def _row_highlight_request(
+        self, sheet_id: int, header: List[Any], rules: RowHighlightRules
+    ) -> Dict[str, Any]:
+        """Build conditional format rules that color data rows whose column is not empty.
+
+        Sheets applies the first matching rule (lowest index), so rule order is precedence.
+        """
+        requests = []
+        for index, (column_name, color) in enumerate(rules):
+            col_letter = gspread.utils.rowcol_to_a1(1, header.index(column_name) + 1).rstrip("1")
+            requests.append({
                 "addConditionalFormatRule": {
-                    "index": 0,
+                    "index": index,
                     "rule": {
                         "ranges": [{"sheetId": sheet_id, "startRowIndex": 1}],
                         "booleanRule": {
@@ -161,12 +167,12 @@ class SheetsWriter:
                                 "type": "CUSTOM_FORMULA",
                                 "values": [{"userEnteredValue": f'=${col_letter}2<>""'}],
                             },
-                            "format": {"backgroundColor": ROW_HIGHLIGHT_COLOR},
+                            "format": {"backgroundColor": color},
                         },
                     },
                 },
-            }],
-        }
+            })
+        return {"requests": requests}
 
     def _write_local_csvs(
         self,

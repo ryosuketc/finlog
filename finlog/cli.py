@@ -19,6 +19,10 @@ from finlog.tax.engine import GSUTaxEngine, GSUTaxCalculationResult
 from finlog.matching.engine import ReconciliationEngine
 from finlog.config import get_drive_folder_id
 
+# Credit View row colors (Google Sheets palette).
+MANUAL_FIX_COLOR = {"red": 208 / 255, "green": 224 / 255, "blue": 227 / 255}  # light cyan 3, #D0E0E3
+MANUAL_REVIEW_COLOR = {"red": 217 / 255, "green": 234 / 255, "blue": 211 / 255}  # light green 3, #D9EAD3
+
 
 @click.group()
 def main():
@@ -132,7 +136,9 @@ def credit(
         credentials_path=credentials,
         folder_id=target_folder_id,
         frozen_header_sheets={"Zaim View", "Credit View"},
-        row_highlight_columns={"Credit View": "manual_review"},
+        row_highlight_rules={
+            "Credit View": [("manual_fix", MANUAL_FIX_COLOR), ("manual_review", MANUAL_REVIEW_COLOR)],
+        },
     )
 
     total_matched = len(result.matched_pairs) + len(result.bundled_matches)

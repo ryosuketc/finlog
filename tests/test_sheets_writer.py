@@ -155,12 +155,14 @@ def test_sheets_writer_freezes_header_row_only_on_listed_sheets():
     raw_ws.freeze.assert_not_called()
 
 
-def test_sheets_writer_highlights_rows_with_filled_column():
+def test_sheets_writer_highlights_rows_with_earlier_rules_taking_precedence():
     writer = SheetsWriter()
     sheets_data = {
         "Raw Log": [["raw line"]],
-        "Credit View": [["transaction_id", "note", "manual_review"], ["VISA-00001", "", "ok"]],
+        "Credit View": [["transaction_id", "manual_review", "manual_fix"], ["VISA-00001", "ok", ""]],
     }
+    fix_color = {"red": 0.1, "green": 0.2, "blue": 0.3}
+    review_color = {"red": 0.4, "green": 0.5, "blue": 0.6}
 
     mock_gc = MagicMock()
     mock_sh = MagicMock()
@@ -174,25 +176,28 @@ def test_sheets_writer_highlights_rows_with_filled_column():
     with patch("gspread.oauth", return_value=mock_gc):
         with patch.object(Path, "exists", return_value=True):
             writer.write_output(
-                "Test Title", sheets_data, row_highlight_columns={"Credit View": "manual_review"}
+                "Test Title",
+                sheets_data,
+                row_highlight_rules={"Credit View": [("manual_fix", fix_color), ("manual_review", review_color)]},
             )
 
-    mock_sh.batch_update.assert_called_once_with({
-        "requests": [{
+    def rule(index, formula, color):
+        return {
             "addConditionalFormatRule": {
-                "index": 0,
+                "index": index,
                 "rule": {
                     "ranges": [{"sheetId": 123, "startRowIndex": 1}],
                     "booleanRule": {
-                        "condition": {
-                            "type": "CUSTOM_FORMULA",
-                            "values": [{"userEnteredValue": '=$C2<>""'}],
-                        },
-                        "format": {
-                            "backgroundColor": {"red": 217 / 255, "green": 234 / 255, "blue": 211 / 255},
-                        },
+                        "condition": {"type": "CUSTOM_FORMULA", "values": [{"userEnteredValue": formula}]},
+                        "format": {"backgroundColor": color},
                     },
                 },
             },
-        }],
+        }
+
+    mock_sh.batch_update.assert_called_once_with({
+        "requests": [
+            rule(0, '=$C2<>""', fix_color),
+            rule(1, '=$B2<>""', review_color),
+        ],
     })

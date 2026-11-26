@@ -201,7 +201,7 @@ def test_cli_credit_freezes_zaim_and_credit_view_headers(tmp_path):
     assert kwargs["frozen_header_sheets"] == {"Zaim View", "Credit View"}
 
 
-def test_cli_credit_highlights_credit_view_rows_with_manual_review(tmp_path):
+def test_cli_credit_highlights_manual_fix_over_manual_review(tmp_path):
     card_path = tmp_path / "amex.csv"
     card_path.write_text(
         "ご利用日,データ処理日,ご利用内容,カード会員様名,会員番号 #,金額\n"
@@ -221,4 +221,9 @@ def test_cli_credit_highlights_credit_view_rows_with_manual_review(tmp_path):
 
     assert result.exit_code == 0, result.output
     kwargs = writer_cls.return_value.write_output.call_args.kwargs
-    assert kwargs["row_highlight_columns"] == {"Credit View": "manual_review"}
+    assert kwargs["row_highlight_rules"] == {
+        "Credit View": [
+            ("manual_fix", {"red": 208 / 255, "green": 224 / 255, "blue": 227 / 255}),
+            ("manual_review", {"red": 217 / 255, "green": 234 / 255, "blue": 211 / 255}),
+        ],
+    }
