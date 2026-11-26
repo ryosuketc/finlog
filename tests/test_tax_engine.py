@@ -100,7 +100,7 @@ def test_total_average_cost_worked_example():
 
     # Remaining state
     assert res.year_end_carryover.shares == Decimal("105")
-    assert res.year_end_carryover.average_cost_per_share == Decimal("226.83")
+    assert res.year_end_carryover.average_cost_per_share == Decimal("46500") / Decimal("205")
 
     # Timeline audit rows verification
     assert len(res.timeline_rows) == 4

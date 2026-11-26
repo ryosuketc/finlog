@@ -16,7 +16,7 @@ Each row in the `Acquisition Cost Audit` sheet represents a chronological invent
 | `shares_change` | $\Delta S$ | Change in share count. Positive for acquisitions (+), negative for sales (-). |
 | `price_usd` | $P_{\text{USD}}$ | Fair Market Value or execution price in USD per share. |
 | `tts_ttb` | $R_{\text{FX}}$ | Applied exchange rate: **TTS** ($TTM + 1.0$) for acquisitions; **TTB** ($TTM - 1.0$) for sales. |
-| `event_val_jpy` | $V_{\text{JPY}}$ | Total JPY value of event: <br> • **Acquisition**: $\text{round}(\Delta S \times P_{\text{USD}} \times \text{TTS})$ <br> • **Sale**: $\text{round}(|\Delta S| \times P_{\text{USD}} \times \text{TTB})$ |
+| `event_val_jpy` | $V_{\text{JPY}}$ | Total JPY value of event: <br> • **Acquisition**: $\Delta S \times P_{\text{USD}} \times \text{TTS}$ (not rounded, so the average cost matches the past tax sheets) <br> • **Sale**: $\text{round}(|\Delta S| \times P_{\text{USD}} \times \text{TTB})$ |
 | `fee_usd` | $\text{Fee}_{\text{USD}}$ | Sales fee / brokerage expense in USD ($0.00$ for Vests/Reinvestments/Carryover). |
 | `fee_jpy` | $\text{Fee}_{\text{JPY}}$ | Sales fee converted to JPY using Sale Date TTB rate: $\text{round}(\text{Fee}_{\text{USD}} \times \text{TTB})$. Subtracted from capital gains. |
 | `running_total_shares` | $S_{\text{running}} = S_{\text{prev}} + \Delta S$ | Cumulative total shares held immediately after event. |

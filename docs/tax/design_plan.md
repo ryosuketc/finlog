@@ -163,6 +163,14 @@ The engine uses pure Python standard libraries without Pandas dependency to guar
    - Sales & Capital Gains Table (譲渡所得)
    - Year-end `CarryoverState` JSON object.
 
+### Rounding (matches the past 確定申告 sheets)
+- Vest income, cash dividend, and foreign tax rows keep exact yen values. Only the yearly totals are rounded up to the yen (ROUNDUP, away from zero).
+- Acquisition costs are not rounded, and the year-end average cost per share is carried over at full precision.
+- Sale rounding is not verified yet (see ROADMAP).
+
+### Verification
+`tests/test_tax_golden.py` reproduces the 2025 figures from the 2025 確定申告 sheet. Its inputs are personal data under `user_data/tax_golden/2025/` (not in git), so the test is skipped when they are missing.
+
 ---
 
 ## 6. Output Sheets Architecture

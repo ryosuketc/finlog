@@ -15,7 +15,7 @@ from finlog.parsers.visa import VisaParser, reformat_visa_rows
 from finlog.parsers.tax import VestsParser, DividendParser, SalesParser
 from finlog.models.tax import CarryoverState
 from finlog.tax.fx_provider import FXProvider
-from finlog.tax.engine import GSUTaxEngine, GSUTaxCalculationResult
+from finlog.tax.engine import GSUTaxEngine, GSUTaxCalculationResult, round_2dec
 from finlog.matching.engine import ReconciliationEngine
 from finlog.config import get_drive_folder_id
 
@@ -256,7 +256,7 @@ def gsu(
     click.echo(f"  - Total Cash Dividend Income (配当所得): ¥{result.total_cash_dividend_jpy:,}")
     click.echo(f"  - Total Foreign Tax Withheld (外国税控除): ¥{result.total_foreign_tax_withheld_jpy:,}")
     click.echo(f"  - Total Capital Gains (譲渡所得): ¥{result.total_capital_gains_jpy:,}")
-    click.echo(f"  - Year-End Remaining Shares: {result.year_end_carryover.shares} (Avg Cost: ¥{result.year_end_carryover.average_cost_per_share}/share)")
+    click.echo(f"  - Year-End Remaining Shares: {result.year_end_carryover.shares} (Avg Cost: ¥{round_2dec(result.year_end_carryover.average_cost_per_share)}/share)")
     click.echo(f"\n{output_msg}")
 
 
@@ -316,7 +316,7 @@ def _format_vests_table(res: GSUTaxCalculationResult) -> List[List[Any]]:
             float(r.shares),
             float(r.fmv_usd),
             float(r.ttm),
-            int(r.income_jpy),
+            float(round_2dec(r.income_jpy)),
         ])
     rows.append(["TOTAL SALARY INCOME", "", float(total_shares), "", "", int(res.total_vest_income_jpy)])
     return rows
@@ -331,7 +331,7 @@ def _format_dividend_table(res: GSUTaxCalculationResult) -> List[List[Any]]:
             r.activity,
             float(r.amount_usd),
             float(r.ttm),
-            int(r.amount_jpy),
+            float(round_2dec(r.amount_jpy)),
         ])
     rows.append([])
     rows.append(["TOTAL CASH DIVIDEND INCOME (配当所得)", "", "", "", int(res.total_cash_dividend_jpy)])
@@ -396,7 +396,7 @@ def _format_acquisition_audit_table(res: GSUTaxCalculationResult) -> List[List[A
             float(r.shares_change),
             float(r.price_usd),
             float(r.fx_rate),
-            int(r.event_val_jpy),
+            float(round_2dec(r.event_val_jpy)),
             float(r.fee_usd),
             int(r.fee_jpy),
             float(r.running_shares),

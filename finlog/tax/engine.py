@@ -1,6 +1,6 @@
 import datetime
 from dataclasses import dataclass
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal, ROUND_HALF_UP, ROUND_UP
 from typing import Dict, List, Optional, Tuple, Any
 
 from finlog.models.tax import (
@@ -16,6 +16,11 @@ from finlog.tax.fx_provider import FXProvider
 def round_jpy(val: Decimal) -> Decimal:
     """Round Decimal currency value to integer JPY using ROUND_HALF_UP."""
     return val.quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+
+
+def ceil_jpy(val: Decimal) -> Decimal:
+    """Round a yearly JPY total up (away from zero) to an integer, like ROUNDUP in the past tax sheets."""
+    return val.quantize(Decimal("1"), rounding=ROUND_UP)
 
 
 def round_2dec(val: Decimal) -> Decimal:
@@ -125,7 +130,7 @@ class GSUTaxEngine:
         for v in sorted_vests:
             fx = self.fx_provider.get_rate(v.vesting_date)
             used_fx_map[v.vesting_date] = fx
-            income_jpy = round_jpy(v.shares * v.fmv_usd * fx.ttm)
+            income_jpy = v.shares * v.fmv_usd * fx.ttm
             total_vest_income_jpy += income_jpy
             vest_rows.append(
                 VestResultRow(
@@ -137,6 +142,9 @@ class GSUTaxEngine:
                     income_jpy=income_jpy,
                 )
             )
+
+        # Rows keep exact yen values; only the yearly total is rounded up, as in the past tax sheets.
+        total_vest_income_jpy = ceil_jpy(total_vest_income_jpy)
 
         # 2. Process Dividends (配当所得 & 外国税控除)
         dividend_rows: List[DividendResultRow] = []
@@ -152,7 +160,7 @@ class GSUTaxEngine:
             used_fx_map[d.entry_date] = fx
 
             if d.activity == "Dividend (Cash)":
-                jpy_val = round_jpy(d.cash_usd * fx.ttm)
+                jpy_val = d.cash_usd * fx.ttm
                 total_cash_dividend_jpy += jpy_val
                 dividend_rows.append(
                     DividendResultRow(
@@ -165,7 +173,7 @@ class GSUTaxEngine:
                 )
             elif d.activity == "IRS Nonresident Alien Withholding":
                 abs_cash = abs(d.cash_usd)
-                jpy_val = round_jpy(abs_cash * fx.ttm)
+                jpy_val = abs_cash * fx.ttm
                 total_foreign_tax_withheld_jpy += jpy_val
                 dividend_rows.append(
                     DividendResultRow(
@@ -176,6 +184,9 @@ class GSUTaxEngine:
                         amount_jpy=jpy_val,
                     )
                 )
+
+        total_cash_dividend_jpy = ceil_jpy(total_cash_dividend_jpy)
+        total_foreign_tax_withheld_jpy = ceil_jpy(total_foreign_tax_withheld_jpy)
 
         # 3. Process Capital Gains (総平均法 - Total Average Cost Method) & Audit Timeline
         timeline_rows: List[AcquisitionTimelineRow] = []
@@ -231,7 +242,7 @@ class GSUTaxEngine:
             used_fx_map[date] = fx
 
             if event_type == "VEST":
-                event_cost_jpy = round_jpy(shares * price_usd * fx.tts)
+                event_cost_jpy = shares * price_usd * fx.tts
                 prev_total_cost = current_shares * current_avg_cost_jpy
                 new_shares = current_shares + shares
                 new_total_cost = prev_total_cost + event_cost_jpy
@@ -260,7 +271,7 @@ class GSUTaxEngine:
                 )
 
             elif event_type == "REINVESTMENT":
-                event_cost_jpy = round_jpy(shares * price_usd * fx.tts)
+                event_cost_jpy = shares * price_usd * fx.tts
                 prev_total_cost = current_shares * current_avg_cost_jpy
                 new_shares = current_shares + shares
                 new_total_cost = prev_total_cost + event_cost_jpy
@@ -334,7 +345,8 @@ class GSUTaxEngine:
         year_end_carryover = CarryoverState(
             year=tax_year,
             shares=current_shares,
-            average_cost_per_share=round_2dec(current_avg_cost_jpy),
+            # Keep full precision: the next year's average cost builds on this value.
+            average_cost_per_share=current_avg_cost_jpy,
         )
 
         used_fx_records = sorted(used_fx_map.values(), key=lambda r: r.date)
