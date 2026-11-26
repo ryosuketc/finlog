@@ -1,6 +1,6 @@
 from unittest.mock import patch
 from click.testing import CliRunner
-from finlog.cli import main, sort_raw_card_rows
+from finlog.cli import main
 
 
 def test_cli_credit_visa_local():
@@ -51,21 +51,70 @@ def test_cli_credit_amex_local():
     assert "AMEX" in result.output
 
 
-def test_sort_raw_card_rows_desc_input():
-    """Test sorting raw card CSV rows into ASC order by date while preserving headers and footers."""
-    rows = [
-        ["ご利用日", "データ処理日", "ご利用内容", "金額"],
-        ["2026/06/21", "2026/06/21", "Amazon", "1000"],
-        ["2026/06/20", "2026/06/21", "Store B", "2000"],
-        ["2026/05/15", "2026/05/16", "Store A", "500"],
-        ["", "", "", "3500"],
+def _run_credit_and_capture_sheets(card_path, zaim_path, card_type):
+    runner = CliRunner()
+    with patch("finlog.cli.SheetsWriter") as writer_cls:
+        writer_cls.return_value.write_output.return_value = "ok"
+        result = runner.invoke(
+            main,
+            ["credit", "--log", str(zaim_path), "--log-type", "zaim", "--card", str(card_path), "--card-type", card_type],
+        )
+    assert result.exit_code == 0, result.output
+    return writer_cls.return_value.write_output.call_args.args[1]
+
+
+ZAIM_LINES = [
+    "日付,方法,カテゴリ,カテゴリの内訳,支払元,入金先,品目,メモ,お店,通貨,収入,支出,振替,残高調整,通貨変換前の金額,集計の設定",
+]
+
+
+def test_cli_credit_visa_keeps_raw_rows_and_adds_reformatted_sheet(tmp_path):
+    raw_lines = [
+        "山田　太郎　様,1234-56**-****-****,ＡＮＡＶＩＳＡプラチナプレミアム",
+        "2026/10/03,店舗Ｂ,200,１,１,200,",
+        "2026/10/02,店舗Ａ,100,１,１,100,",
+        ",,,,,300",
+        "山田　花子　様,1234-56**-****-****,ＡＮＡＶＩＳＡプラチナプレミアム",
+        "2026/10/01,店舗Ｃ,400,１,１,400,",
+        ",,,,,400",
+    ]
+    card_path = tmp_path / "visa.csv"
+    card_path.write_text("\n".join(raw_lines) + "\n", encoding="utf-8")
+    zaim_path = tmp_path / "zaim.csv"
+    zaim_path.write_text("\n".join(ZAIM_LINES) + "\n", encoding="utf-8")
+
+    sheets = _run_credit_and_capture_sheets(card_path, zaim_path, "visa")
+
+    assert list(sheets) == [
+        "Raw Credit Card Log",
+        "Reformatted Credit Card Log",
+        "Raw Zaim Log",
+        "Zaim View",
+        "Credit View",
+    ]
+    assert [",".join(r) for r in sheets["Raw Credit Card Log"]] == raw_lines
+    reformatted = sheets["Reformatted Credit Card Log"]
+    assert reformatted[0][:2] == ["source_line", "cardholder"]
+    assert [(r[1], r[4]) for r in reformatted[1:]] == [
+        ("山田　太郎　様", "2026/10/02"),
+        ("山田　太郎　様", "2026/10/03"),
+        ("山田　花子　様", "2026/10/01"),
     ]
 
-    sorted_rows = sort_raw_card_rows(rows)
 
-    assert sorted_rows[0] == ["ご利用日", "データ処理日", "ご利用内容", "金額"]
-    assert sorted_rows[1][0] == "2026/05/15"
-    assert sorted_rows[2][0] == "2026/06/20"
-    assert sorted_rows[3][0] == "2026/06/21"
-    assert sorted_rows[4] == ["", "", "", "3500"]
+def test_cli_credit_amex_reformatted_sheet_matches_raw(tmp_path):
+    raw_lines = [
+        "ご利用日,データ処理日,ご利用内容,カード会員様名,会員番号 #,金額",
+        "2026/06/21,2026/06/21,Amazon,TARO YAMADA,-11111,1000",
+        "2026/05/15,2026/05/16,Store A,HANAKO YAMADA,-22222,500",
+    ]
+    card_path = tmp_path / "amex.csv"
+    card_path.write_text("\n".join(raw_lines) + "\n", encoding="utf-8")
+    zaim_path = tmp_path / "zaim.csv"
+    zaim_path.write_text("\n".join(ZAIM_LINES) + "\n", encoding="utf-8")
+
+    sheets = _run_credit_and_capture_sheets(card_path, zaim_path, "amex")
+
+    assert [",".join(r) for r in sheets["Raw Credit Card Log"]] == raw_lines
+    assert sheets["Reformatted Credit Card Log"] == sheets["Raw Credit Card Log"]
 

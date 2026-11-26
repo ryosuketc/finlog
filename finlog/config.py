@@ -4,6 +4,14 @@ DRIVE_FOLDER_ID_PROD = "1xUMheq3xhaY14JagZoDesQpQauClWDXe"
 DRIVE_FOLDER_ID_DEV = "1HjukZ03FPEQde6R4Ky_lnAGYL8VL2Jxn"
 DRIVE_FOLDER_ID = DRIVE_FOLDER_ID_PROD
 
+# Card statement cardholder names (after BaseParser.clean_string) of family-card
+# members. Their charges match only the family Zaim accounts in
+# finlog.matching.engine.CARD_ACCOUNT_MAPPINGS.
+FAMILY_CARDHOLDERS = frozenset({
+    "橘 優里 様",  # ANA VISA
+    "YURI TACHIBANA",  # Amex
+})
+
 
 def get_drive_folder_id(dev: bool = False, override_id: Optional[str] = None) -> str:
     """Return the target Google Drive folder ID based on dev flag or explicit override."""

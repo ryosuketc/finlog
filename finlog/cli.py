@@ -11,7 +11,7 @@ from finlog.io.csv_reader import read_csv_lines
 from finlog.io.sheets_writer import SheetsWriter
 from finlog.parsers.zaim import ZaimParser
 from finlog.parsers.amex import AmexParser
-from finlog.parsers.visa import VisaParser
+from finlog.parsers.visa import VisaParser, reformat_visa_rows
 from finlog.parsers.tax import VestsParser, DividendParser, SalesParser
 from finlog.models.tax import CarryoverState
 from finlog.tax.fx_provider import FXProvider
@@ -70,9 +70,11 @@ def credit(
     if c_type in ("visa", "ana_visa"):
         card_parser = VisaParser()
         card_label = "VISA"
+        reformatted_card_rows = reformat_visa_rows(raw_card_rows)
     elif c_type in ("amex", "amex_proper"):
         card_parser = AmexParser()
         card_label = "AMEX"
+        reformatted_card_rows = raw_card_rows  # Already one transaction per row
     else:
         raise click.BadParameter(f"Unsupported card type: {card_type}")
 
@@ -111,9 +113,10 @@ def credit(
 
     title = f"finlog credit: Zaim vs {card_label} ({date_str}) ({now_str})"
 
-    # 6. Construct 4 Sheet Tables
+    # 6. Construct Sheet Tables
     sheets_data: Dict[str, List[List[Any]]] = {
-        "Raw Credit Card Log": sort_raw_card_rows(raw_card_rows),
+        "Raw Credit Card Log": raw_card_rows,
+        "Reformatted Credit Card Log": reformatted_card_rows,
         "Raw Zaim Log": raw_zaim_rows,
         "Zaim View": _format_zaim_view_table(result.zaim_view_entries),
         "Credit View": _format_credit_view_table(result.credit_view_entries),
@@ -241,51 +244,6 @@ def gsu(
     click.echo(f"  - Total Capital Gains (譲渡所得): ¥{result.total_capital_gains_jpy:,}")
     click.echo(f"  - Year-End Remaining Shares: {result.year_end_carryover.shares} (Avg Cost: ¥{result.year_end_carryover.average_cost_per_share}/share)")
     click.echo(f"\n{output_msg}")
-
-
-def sort_raw_card_rows(rows: List[List[Any]]) -> List[List[Any]]:
-    """Sort raw credit card CSV rows by transaction date in ASC order.
-
-    Preserves top non-transaction header/metadata rows and bottom summary footer rows.
-    """
-    if not rows:
-        return []
-
-    def _parse_row_date(row: List[Any]) -> Optional[datetime.date]:
-        if not row or not row[0]:
-            return None
-        s = str(row[0]).strip().replace("/", "-")
-        parts = s.split("-")
-        if len(parts) == 3 and parts[0].isdigit() and len(parts[0]) == 4:
-            try:
-                return datetime.date(int(parts[0]), int(parts[1]), int(parts[2]))
-            except ValueError:
-                return None
-        return None
-
-    first_date_idx = None
-    last_date_idx = None
-
-    for idx, row in enumerate(rows):
-        dt = _parse_row_date(row)
-        if dt is not None:
-            if first_date_idx is None:
-                first_date_idx = idx
-            last_date_idx = idx
-
-    if first_date_idx is None:
-        return list(rows)
-
-    header_rows = rows[:first_date_idx]
-    footer_rows = rows[last_date_idx + 1 :]
-    data_rows = rows[first_date_idx : last_date_idx + 1]
-
-    sorted_data_rows = sorted(
-        data_rows,
-        key=lambda r: _parse_row_date(r) or datetime.date.min,
-    )
-
-    return header_rows + sorted_data_rows + footer_rows
 
 
 def _format_zaim_view_table(entries: List[Dict[str, Any]]) -> List[List[Any]]:

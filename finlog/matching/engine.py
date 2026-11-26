@@ -2,29 +2,35 @@ from dataclasses import dataclass
 import datetime
 import itertools
 from typing import Any, Callable, Dict, List, Optional
+from finlog.config import FAMILY_CARDHOLDERS
 from finlog.models.transaction import CreditCardTransaction, FinanceLogTransaction
 from finlog.matching.strategies.base import BaseSimilarityStrategy
 from finlog.matching.strategies.contains_strategy import SimpleContainsStrategy
 
 
-CARD_ACCOUNT_MAPPINGS: Dict[str, Dict[str, List[str]]] = {
+# Zaim accounts per card, split by cardholder ("main" member or "family" member).
+# Family members have no Paid account of their own; settled family charges
+# live in the main member's Paid account.
+CARD_ACCOUNT_MAPPINGS: Dict[str, Dict[str, Dict[str, List[str]]]] = {
     "ANA VISA Platinum": {
-        "unpaid": ["ANA VISA Platinum Unpaid"],
-        "paid": ["ANA VISA Platinum Paid"],
+        "main": {"unpaid": ["ANA VISA Platinum Unpaid"], "paid": ["ANA VISA Platinum Paid"]},
+        "family": {"unpaid": ["Yuri ANA VISA Platinum Unpaid"], "paid": ["ANA VISA Platinum Paid"]},
     },
     "Amex Proper": {
-        "unpaid": ["Amex Proper Unpaid", "Yuri Amex Proper Unpaid"],
-        "paid": ["Amex Proper Paid"],
+        "main": {"unpaid": ["Amex Proper Unpaid"], "paid": ["Amex Proper Paid"]},
+        "family": {"unpaid": ["Yuri Amex Proper Unpaid"], "paid": ["Amex Proper Paid"]},
     },
 }
 
 
-def get_card_accounts(card_company: str, unpaid_only: bool = True) -> List[str]:
-    """Return allowed Zaim accounts for a given card company based on unpaid_only flag."""
+def get_card_accounts(card_company: str, unpaid_only: bool = True, cardholder: Optional[str] = None) -> List[str]:
+    """Return allowed Zaim accounts for a card company and cardholder based on unpaid_only flag."""
+    holder_type = "family" if cardholder in FAMILY_CARDHOLDERS else "main"
     c_norm = card_company.lower()
-    for key, mapping in CARD_ACCOUNT_MAPPINGS.items():
+    for key, holders in CARD_ACCOUNT_MAPPINGS.items():
         k_norm = key.lower()
         if k_norm in c_norm or c_norm in k_norm:
+            mapping = holders[holder_type]
             if unpaid_only:
                 return mapping["unpaid"]
             return mapping["unpaid"] + mapping["paid"]
@@ -95,7 +101,7 @@ class ReconciliationEngine:
         for idx, card_tx in enumerate(card_transactions):
             if progress_callback:
                 progress_callback(idx + 1, total_cards)
-            allowed_accounts = get_card_accounts(card_tx.card_company, unpaid_only=self.unpaid_only)
+            allowed_accounts = get_card_accounts(card_tx.card_company, unpaid_only=self.unpaid_only, cardholder=card_tx.cardholder)
 
             candidates = []
             for zaim_tx in zaim_transactions:
@@ -146,7 +152,7 @@ class ReconciliationEngine:
         bundled_matches: List[BundledMatch] = []
 
         for card_tx in unmatched_card_txs:
-            allowed_accounts = get_card_accounts(card_tx.card_company, unpaid_only=self.unpaid_only)
+            allowed_accounts = get_card_accounts(card_tx.card_company, unpaid_only=self.unpaid_only, cardholder=card_tx.cardholder)
 
             # Filter candidate Zaim transactions (unmatched, exact account, exact date, broad merchant match)
             candidates = []

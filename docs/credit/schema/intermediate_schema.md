@@ -45,8 +45,9 @@ The Credit Card Intermediate Schema fields map directly to preprocessed Zaim fie
 
 Zaim uses status-suffixed account names (e.g., `Unpaid` vs `Paid`), whereas Credit Card statements represent the card/company name directly.
 
-- **`Amex Proper`**: Matches Zaim accounts `Amex Proper Unpaid`, `Yuri Amex Proper Unpaid`, `Amex Proper Paid`.
-- **`ANA VISA Platinum`**: Matches Zaim accounts `ANA VISA Platinum Unpaid`, `ANA VISA Platinum Paid`.
+- **`Amex Proper`**: Main member matches `Amex Proper Unpaid` (and `Amex Proper Paid`); family member matches `Yuri Amex Proper Unpaid` (and `Amex Proper Paid`).
+- **`ANA VISA Platinum`**: Main member matches `ANA VISA Platinum Unpaid` (and `ANA VISA Platinum Paid`); family member matches `Yuri ANA VISA Platinum Unpaid` (and `ANA VISA Platinum Paid`).
+- **Family members** are the cardholders listed in `finlog.config.FAMILY_CARDHOLDERS`. The `Paid` accounts are only searched with `--include-all-accounts`.
 
 ---
 

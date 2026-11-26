@@ -105,16 +105,72 @@ def test_reconciliation_engine_matching():
 def test_get_card_accounts():
     from finlog.matching.engine import get_card_accounts
 
-    # VISA
+    # VISA main member
     assert get_card_accounts("ANA VISA Platinum", unpaid_only=True) == ["ANA VISA Platinum Unpaid"]
     assert get_card_accounts("ANA VISA Platinum", unpaid_only=False) == ["ANA VISA Platinum Unpaid", "ANA VISA Platinum Paid"]
 
-    # AMEX
-    assert get_card_accounts("Amex Proper", unpaid_only=True) == ["Amex Proper Unpaid", "Yuri Amex Proper Unpaid"]
-    assert get_card_accounts("Amex Proper", unpaid_only=False) == ["Amex Proper Unpaid", "Yuri Amex Proper Unpaid", "Amex Proper Paid"]
+    # AMEX main member
+    assert get_card_accounts("Amex Proper", unpaid_only=True) == ["Amex Proper Unpaid"]
+    assert get_card_accounts("Amex Proper", unpaid_only=False) == ["Amex Proper Unpaid", "Amex Proper Paid"]
 
     # Unknown
     assert get_card_accounts("Unknown Card") == []
+
+
+@pytest.mark.parametrize(
+    "card_company, unpaid_only, expected",
+    [
+        ("ANA VISA Platinum", True, ["Yuri ANA VISA Platinum Unpaid"]),
+        ("ANA VISA Platinum", False, ["Yuri ANA VISA Platinum Unpaid", "ANA VISA Platinum Paid"]),
+        ("Amex Proper", True, ["Yuri Amex Proper Unpaid"]),
+        ("Amex Proper", False, ["Yuri Amex Proper Unpaid", "Amex Proper Paid"]),
+    ],
+)
+def test_get_card_accounts_family_cardholder(monkeypatch, card_company, unpaid_only, expected):
+    from finlog.matching import engine
+
+    monkeypatch.setattr(engine, "FAMILY_CARDHOLDERS", frozenset({"FAMILY HOLDER"}))
+
+    assert engine.get_card_accounts(card_company, unpaid_only=unpaid_only, cardholder="FAMILY HOLDER") == expected
+    assert engine.get_card_accounts(card_company, unpaid_only=True, cardholder="MAIN HOLDER") == [
+        engine.CARD_ACCOUNT_MAPPINGS[card_company]["main"]["unpaid"][0]
+    ]
+
+
+def test_reconciliation_engine_matches_each_holder_to_own_account(monkeypatch):
+    from finlog.matching import engine
+
+    monkeypatch.setattr(engine, "FAMILY_CARDHOLDERS", frozenset({"FAMILY HOLDER"}))
+    card_txs = [
+        CreditCardTransaction(
+            transaction_id=f"VISA-0000{i}",
+            card_company="ANA VISA Platinum",
+            date=datetime.date(2026, 11, 1),
+            amount=500,
+            payee_merchant="コンビニ",
+            cardholder=holder,
+        )
+        for i, holder in enumerate(["MAIN HOLDER", "FAMILY HOLDER"], start=1)
+    ]
+    zaim_txs = [
+        FinanceLogTransaction(
+            transaction_id=f"ZAIM-0000{i}",
+            platform="Zaim",
+            type="expense",
+            date=datetime.date(2026, 11, 1),
+            year="2026",
+            month="2026-11",
+            account=account,
+            amount=500,
+            payee_payer="コンビニ",
+        )
+        for i, account in enumerate(["Yuri ANA VISA Platinum Unpaid", "ANA VISA Platinum Unpaid"], start=1)
+    ]
+
+    result = ReconciliationEngine().reconcile(card_transactions=card_txs, zaim_transactions=zaim_txs)
+
+    pairs = {p.card_tx.transaction_id: p.zaim_tx.transaction_id for p in result.matched_pairs}
+    assert pairs == {"VISA-00001": "ZAIM-00002", "VISA-00002": "ZAIM-00001"}
 
 
 def test_reconciliation_engine_credit_view_cardholder_and_date_sort():

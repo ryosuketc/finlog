@@ -74,7 +74,7 @@ flowchart LR
   - `generate_transaction_id`: Formats unique primary IDs (`VISA-00001`, `ZAIM-00001`).
 - **`ZaimParser`**: Ingests Zaim UTF-8 CSV exports.
 - **`AmexParser`**: Handles `cp932` encoding, cleans full-width merchant spaces, removes string commas, and extracts cardholder names (`RYOSUKE TACHIBANA` vs `YURI TACHIBANA`).
-- **`VisaParser`**: Handles `cp932` encoding, strips metadata header (Line 1) and footer total summary (Line N), mapping headerless CSV columns to structured objects.
+- **`VisaParser`**: Handles `cp932` encoding. First flattens the multi-section statement with `reformat_visa_rows` (one transaction per row, with the section's cardholder and card number), then maps the flat rows to structured objects.
 
 ### Stage 3: Data Models & Domain Architecture (`finlog.models.transaction`)
 
@@ -88,23 +88,24 @@ Two domain dataclasses manage data representation cleanly:
 ### Stage 4: Reconciliation & Account Mapping Engine (`finlog.matching.engine`)
 
 #### Card-to-Zaim Account Mapping (`CARD_ACCOUNT_MAPPINGS`)
-To match credit card statements against appropriate Zaim accounts (such as unpaid liabilities vs paid accounts), `finlog/matching/engine.py` maintains a central mapping structure:
+To match credit card statements against appropriate Zaim accounts (such as unpaid liabilities vs paid accounts), `finlog/matching/engine.py` maintains a central mapping structure, split by cardholder type:
 
 ```python
 CARD_ACCOUNT_MAPPINGS = {
     "ANA VISA Platinum": {
-        "unpaid": ["ANA VISA Platinum Unpaid"],
-        "paid": ["ANA VISA Platinum Paid"],
+        "main": {"unpaid": ["ANA VISA Platinum Unpaid"], "paid": ["ANA VISA Platinum Paid"]},
+        "family": {"unpaid": ["Yuri ANA VISA Platinum Unpaid"], "paid": ["ANA VISA Platinum Paid"]},
     },
     "Amex Proper": {
-        "unpaid": ["Amex Proper Unpaid", "Yuri Amex Proper Unpaid"],
-        "paid": ["Amex Proper Paid"],
+        "main": {"unpaid": ["Amex Proper Unpaid"], "paid": ["Amex Proper Paid"]},
+        "family": {"unpaid": ["Yuri Amex Proper Unpaid"], "paid": ["Amex Proper Paid"]},
     },
 }
 ```
 
-- **Unpaid Account Focus**: By default (`unpaid_only=True`), reconciliation matches card transactions exclusively against Zaim's `Unpaid` accounts for that specific card.
-- **Include All Accounts**: Passing `--include-all-accounts` includes both `Unpaid` and `Paid` accounts in candidate search.
+- **Cardholder Scoping**: A card transaction whose `cardholder` is in `finlog.config.FAMILY_CARDHOLDERS` uses the `family` accounts; every other cardholder uses the `main` accounts. This keeps a main-member charge from matching a family-account Zaim entry and vice versa.
+- **Unpaid Account Focus**: By default (`unpaid_only=True`), reconciliation matches card transactions exclusively against Zaim's `Unpaid` accounts for that specific card and cardholder.
+- **Include All Accounts**: Passing `--include-all-accounts` includes both `Unpaid` and `Paid` accounts in candidate search. Family members have no `Paid` account of their own, so they share the main member's `Paid` account.
 
 #### 2-Phase Matching Architecture
 Matching uses a sequential 2-phase architecture to maximize accuracy:
@@ -122,14 +123,15 @@ Matching uses a sequential 2-phase architecture to maximize accuracy:
 
 ---
 
-## 5. Output Sheets Architecture (4-Tab Layout)
+## 5. Output Sheets Architecture (5-Tab Layout)
 
-The exporter (`finlog.io.sheets_writer`) creates a streamlined **4-Tab Google Spreadsheet** (or local CSV fallback directory):
+The exporter (`finlog.io.sheets_writer`) creates a streamlined **5-Tab Google Spreadsheet** (or local CSV fallback directory):
 
-1. **`Raw Credit Card Log`**: Raw CSV entries parsed via `csv.reader` and sorted by transaction date in ASC order (older date first), while preserving top non-transaction header/metadata rows and bottom summary footer rows.
-2. **`Raw Zaim Log`**: Raw Zaim CSV entries directly parsed as 2D cell arrays via `csv.reader`.
-3. **`Zaim View`**: All Zaim entries sorted by date. Features `transaction_id` in the **leftmost column** and reconciliation status (`match_status`, `matched_transaction_id`) in the **rightmost columns**. Zaim transactions outside statement date bounds are flagged as `Out of Statement Scope`.
-4. **`Credit View`**: **All credit card transactions** from the statement CSV (both Matched and Unmatched), sorted first by `cardholder` (ASC) and then by `date` (ASC). Features `transaction_id` in the **leftmost column** and reconciliation status (`match_status`, `matched_transaction_id`) in the **rightmost columns**.
+1. **`Raw Credit Card Log`**: Raw CSV entries parsed via `csv.reader`, unchanged and in file order (including section header, subtotal, and total rows).
+2. **`Reformatted Credit Card Log`**: One transaction per row with its cardholder. For VISA, this is the output of `reformat_visa_rows` (see `visa_schema.md`). For Amex, the raw rows are already one transaction per row, so this tab equals the raw tab.
+3. **`Raw Zaim Log`**: Raw Zaim CSV entries directly parsed as 2D cell arrays via `csv.reader`.
+4. **`Zaim View`**: All Zaim entries sorted by date. Features `transaction_id` in the **leftmost column** and reconciliation status (`match_status`, `matched_transaction_id`) in the **rightmost columns**. Zaim transactions outside statement date bounds are flagged as `Out of Statement Scope`.
+5. **`Credit View`**: **All credit card transactions** from the statement CSV (both Matched and Unmatched), sorted first by `cardholder` (ASC) and then by `date` (ASC). Features `transaction_id` in the **leftmost column** and reconciliation status (`match_status`, `matched_transaction_id`) in the **rightmost columns**.
 
 ---
 
