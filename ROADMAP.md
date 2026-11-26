@@ -20,6 +20,20 @@ This document tracks upcoming features, ongoing validation milestones, and plann
 - [ ] **e-Tax Verification**: Verify generated figures (給与所得, 配当所得, 外国税控除, 譲渡所得) against official National Tax Agency (国税庁 e-Tax) 確定申告 submission forms.
 - [x] **Sales Fee / Broker Expenses (譲渡費用)**: Support optional brokerage sales fees and transaction costs in capital gains calculations.
 
+### Capital Gains (譲渡所得)
+The engine already computes sales, because the year-end average cost (carryover) needs them. Full verification waits for a tax year with real sales (none in 2026).
+- [ ] **Golden Test with Real Sales**: Compare a year with sales against the 確定申告 sheet for that year (proceeds, acquisition cost, fee, gain).
+- [ ] **Sale Rounding Rules**: Match the past sheets: round proceeds up, and round the per-share average cost up to the yen when it is used for a sale (総平均法に準ずる方法).
+- [ ] **Sale Fee FX Rate**: The past sheets convert the sale fee with TTS, and finlog uses TTB. Confirm which rate to use.
+- [ ] **Read Sales from the Stock Statement Export**: Parse the Activity Report (Withdrawals Report) directly instead of a hand-built Sales CSV.
+
+## 🏥 `finlog tax iryohi` (医療費控除)
+
+For now the BigQuery pipeline runs by hand and produces the `iryohi_raw` review sheet. Review and export start from that sheet.
+- [ ] **Automate the BigQuery Pipeline**: Run the saved queries `finlog.merge` (rebuilds the `financeLog.master` table) and `finlog.iryouhi` from the CLI, and write the result to a review sheet. Zaim download, the `raw_Zaim` upload, and the transport database update stay manual.
+  - Move both saved queries into the repo as SQL files with the tax year as a parameter.
+  - Add the BigQuery scope to the existing user OAuth sign-in, so one sign-in covers Sheets, Drive (for the sheet-backed transport table), and BigQuery in the FinLog BigQuery project.
+
 ---
 
 ## 🛠️ Infrastructure & Quality Assurance
