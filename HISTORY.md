@@ -144,10 +144,49 @@ by hand.
 **Conversation**: fcf1d6d7-b255-4046-8113-cefbe5dbd9e6 ("Finlog Credit View
 Output Modification Plan").
 
+## 2026-11-27: Tax command group, MURC rates, and 2025 golden test
+
+**Summary**: Started the 2026 tax return work. GSU moved to `finlog tax gsu`,
+FX rates now come from MURC like the past returns, and a golden test
+reproduces the filed 2025 figures.
+
+**Changes**:
+
+*   `finlog gsu` is now `finlog tax gsu`, with no alias.
+*   FX rates come from the MURC historical rate page, with Frankfurter as a
+    marked fallback. The made-up 150 JPY offline rate is gone; the command now
+    fails with `FXRateUnavailableError`.
+*   GSU totals follow the past sheets: rows keep exact yen, yearly totals round
+    up, acquisition costs are not rounded, and the carryover keeps full
+    precision.
+*   A sale larger than the holdings now stops with `InsufficientSharesError`.
+*   ROADMAP: capital gain verification (no 2026 sales) and the 医療費 BigQuery
+    automation are deferred.
+
+**Key decisions**:
+
+*   The golden inputs are personal data, so they live in
+    `user_data/tax_golden/2025/` (not in git). The golden and CLI tests skip
+    when they are missing.
+*   The golden test found one error in the 2025 sheet: one dividend
+    reinvestment was priced at the TTS of the dividend date instead of the
+    purchase date, which moved the year-end average cost slightly. The sheet
+    was corrected, and the golden test expects the corrected value.
+*   The expected figures live next to the inputs (`expected.json`), so no
+    personal amounts are in the repository.
+
+**Verification**: 67 tests passed with `pytest`. A live run against MURC
+produced the same 2025 year-end carryover as the golden test.
+
+**Commits**: 6ffeb53a, 56161f95, 4c29e775, a1feb3d5, f7bb2141.
+
+**Conversation**: dd59cb8c-9c65-4302-9229-fe932913fbf2.
+
 ## Open items
 
 See [ROADMAP.md](ROADMAP.md) for the full list. Main items:
 
 *   Monthly end-to-end reconciliation with real Zaim exports and statements.
 *   More tuning of merchant matching and N:1 bundling against real data.
-*   Check `finlog gsu` figures against the e-Tax filing.
+*   Check `finlog tax gsu` figures against the e-Tax filing, including capital
+    gains in a year with sales.
