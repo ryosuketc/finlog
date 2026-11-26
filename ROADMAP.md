@@ -38,6 +38,17 @@ For now the BigQuery pipeline runs by hand and produces the `iryohi_raw` review 
 - [ ] **Read the Sheet Directly**: Read iryohi_raw from Google Sheets by URL instead of a downloaded CSV.
 - [ ] **Write the Official Form File**: Fill the National Tax Agency 医療費集計フォーム xlsx directly instead of rows to paste.
 
+## 🧾 `finlog tax checks` and `finlog tax summary`
+
+Planned for the 2026 return. See [PLAN.md](PLAN.md) for the design.
+- [ ] **Per-Year Config**: One TOML file per tax year for input paths and manual values (needs `requires-python >= 3.11`).
+- [ ] **ふるさと納税 Check**: Year total from the tracking sheet, rows without a receipt, total against the cap.
+- [ ] **寄付金控除 Check**: Non-furusato donations from Zaim, compared with receipt amounts.
+- [ ] **保険料控除 Calculation**: Deductions from certificate amounts (一般生命, 介護医療, 個人年金, 地震).
+- [ ] **為替差益・差損 Check**: Net FX gain or loss across bank accounts, and whether it is reportable.
+- [ ] **Summary Report**: One spreadsheet with every e-Tax input, its source, and its status.
+- [ ] **2026 Golden Tests**: Add 2026 GSU and 医療費 cases from the hand-computed figures.
+
 ---
 
 ## 🛠️ Infrastructure & Quality Assurance

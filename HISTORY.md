@@ -178,7 +178,7 @@ reproduces the filed 2025 figures.
 **Verification**: 67 tests passed with `pytest`. A live run against MURC
 produced the same 2025 year-end carryover as the golden test.
 
-**Commits**: 6ffeb53a, 56161f95, 4c29e775, a1feb3d5, f7bb2141.
+**Commits**: bc44834b, e7f43caf, 20a94f42, f84978ad, 50c74e6b.
 
 **Conversation**: dd59cb8c-9c65-4302-9229-fe932913fbf2.
 
@@ -217,13 +217,47 @@ whose category column held a station name; export now reports it. The 2025
 data also shows rows without a category, rows without a receipt, payee names
 over the 20-character limit, and rows with `need_data_fix`.
 
-**Commits**: 95168ae1, e342af88.
+**Commits**: aa8f6c8f, 9f408802.
+
+**Conversation**: dd59cb8c-9c65-4302-9229-fe932913fbf2.
+
+## 2026-11-27: Handoff for the 2026 tax return
+
+**Summary**: Paused the tax work until February 2027. GSU and 医療費 commands
+are in place and verified against 2025; the data checks and the summary report
+are next. [PLAN.md](PLAN.md) has the resume checklist.
+
+**Next actions**:
+
+*   Run `finlog tax gsu` on the 2026 inputs from the 2025 carryover, and add a
+    2026 golden case from the hand-computed figures.
+*   Run the 医療費 flow on 2026 data (manual BigQuery run, Jetski review,
+    annotate, export).
+*   Build `finlog tax checks` with a per-year config, then `finlog tax
+    summary`.
+
+**Modified files**: finlog/cli.py, finlog/tax/engine.py,
+finlog/tax/fx_provider.py, finlog/tax/iryohi.py, tests (fx provider, tax
+golden, tax CLI, tax engine, iryohi, iryohi golden, iryohi CLI, MURC page
+fixture), README.md, ROADMAP.md, PLAN.md, docs/tax/design_plan.md,
+docs/tax/acquisition_cost_calculation.md, docs/tax/iryohi_review.md,
+docs/tax/schema/input_schemas.md, docs/credit/design_plan.md.
+
+**Key decisions**:
+
+*   Personal figures and inputs stay under `user_data/` (ignored by git),
+    because this repository is public. Golden tests read their expected values
+    from there and skip when the files are missing.
+*   The 医療費 BigQuery pipeline stays manual for the 2026 return.
+
+**Output links**: commits bc44834b to e7e41a9d on `main`, and this entry.
 
 **Conversation**: dd59cb8c-9c65-4302-9229-fe932913fbf2.
 
 ## Open items
 
-See [ROADMAP.md](ROADMAP.md) for the full list. Main items:
+See [PLAN.md](PLAN.md) for the next steps and [ROADMAP.md](ROADMAP.md) for the
+full list. Main items:
 
 *   Monthly end-to-end reconciliation with real Zaim exports and statements.
 *   More tuning of merchant matching and N:1 bundling against real data.
