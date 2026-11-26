@@ -22,7 +22,7 @@
   - **Phase 1 (1:1 Matching)**: Matches 1-to-1 transactions using exact amount verification, date proximity ($\pm 5$ days default, configurable via `--match-window-days`), and broad merchant matching with containment and native alias normalization (`finlog/matching/merchant_map.json`).
   - **Phase 2 (N:1 Bundled Matching)**: Reconciles multiple Zaim log entries (e.g., ¥100 + ¥200, or ¥13,000 + -¥500 cashback) bundled into a single credit card charge line (e.g., ¥300 or ¥12,500) sharing exact date, account, and broad merchant match (`similarity() >= 0.4`).
 - 🏦 **Card Company to Zaim Account Mapping**: Automatically maps credit cards (VISA, AMEX) to Zaim `Unpaid` and `Paid` accounts.
-- 📊 **Streamlined Verification Sheets**: Generates multi-tab Google Spreadsheets featuring `Zaim View`, `Credit View` (sorted by cardholder and date ASC, flagging bundled matches as `Matched (Bundled)`), and raw data logs (`Raw Credit Card Log` unchanged in file order, plus `Reformatted Credit Card Log` with one transaction per row and its cardholder).
+- 📊 **Streamlined Verification Sheets**: Generates multi-tab Google Spreadsheets featuring `Zaim View`, `Credit View` (sorted by cardholder and date ASC, flagging bundled matches as `Matched (Bundled)`, with empty `manual_review` / `manual_fix` / `manual_note` columns; both views freeze their header row), and raw data logs (`Raw Credit Card Log` unchanged in file order, plus `Reformatted Credit Card Log` with one transaction per row and its cardholder).
 
 
 

@@ -176,3 +176,26 @@ def test_cli_credit_amex_credit_view_column_order(tmp_path):
         CREDIT_VIEW_HEADER,
         ["AMEX-00001", "Amex Proper", "TARO YAMADA", "-11111", "2026-06-21", 1000, "Amazon", "", "Unmatched", "", "", "", ""],
     ]
+
+
+def test_cli_credit_freezes_zaim_and_credit_view_headers(tmp_path):
+    card_path = tmp_path / "amex.csv"
+    card_path.write_text(
+        "ご利用日,データ処理日,ご利用内容,カード会員様名,会員番号 #,金額\n"
+        "2026/06/21,2026/06/21,Amazon,TARO YAMADA,-11111,1000\n",
+        encoding="utf-8",
+    )
+    zaim_path = tmp_path / "zaim.csv"
+    zaim_path.write_text("\n".join(ZAIM_LINES) + "\n", encoding="utf-8")
+
+    runner = CliRunner()
+    with patch("finlog.cli.SheetsWriter") as writer_cls:
+        writer_cls.return_value.write_output.return_value = "ok"
+        result = runner.invoke(
+            main,
+            ["credit", "--log", str(zaim_path), "--log-type", "zaim", "--card", str(card_path), "--card-type", "amex"],
+        )
+
+    assert result.exit_code == 0, result.output
+    kwargs = writer_cls.return_value.write_output.call_args.kwargs
+    assert kwargs["frozen_header_sheets"] == {"Zaim View", "Credit View"}

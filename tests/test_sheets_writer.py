@@ -131,3 +131,25 @@ def test_sheets_writer_oauth_invalid_grant_recovery():
         assert auth_user_file.read_text(encoding="utf-8") == '{"refresh_token": "fresh_token"}'
 
 
+def test_sheets_writer_freezes_header_row_only_on_listed_sheets():
+    writer = SheetsWriter()
+    sheets_data = {
+        "Raw Log": [["raw line"]],
+        "Credit View": [["transaction_id"], ["VISA-00001"]],
+    }
+
+    mock_gc = MagicMock()
+    mock_sh = MagicMock()
+    mock_sh.url = "https://docs.google.com/spreadsheets/d/test-id"
+    raw_ws = MagicMock()
+    credit_ws = MagicMock()
+    mock_sh.sheet1 = raw_ws
+    mock_sh.add_worksheet.return_value = credit_ws
+    mock_gc.create.return_value = mock_sh
+
+    with patch("gspread.oauth", return_value=mock_gc):
+        with patch.object(Path, "exists", return_value=True):
+            writer.write_output("Test Title", sheets_data, frozen_header_sheets={"Credit View"})
+
+    credit_ws.freeze.assert_called_once_with(rows=1)
+    raw_ws.freeze.assert_not_called()

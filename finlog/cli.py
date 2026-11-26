@@ -131,6 +131,7 @@ def credit(
         service_account_path=service_account,
         credentials_path=credentials,
         folder_id=target_folder_id,
+        frozen_header_sheets={"Zaim View", "Credit View"},
     )
 
     total_matched = len(result.matched_pairs) + len(result.bundled_matches)

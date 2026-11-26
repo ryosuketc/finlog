@@ -2,7 +2,7 @@ import csv
 import os
 import click
 from pathlib import Path
-from typing import Dict, List, Any, Optional
+from typing import AbstractSet, Dict, List, Any, Optional
 from finlog.config import DRIVE_FOLDER_ID, get_drive_folder_id
 
 try:
@@ -23,6 +23,7 @@ class SheetsWriter:
         credentials_path: Optional[str] = None,
         output_dir: Optional[Path] = None,
         folder_id: Optional[str] = None,
+        frozen_header_sheets: AbstractSet[str] = frozenset(),
     ) -> str:
         """Write multi-tab data to Google Sheets (via OAuth or Service Account) or fallback to local CSVs."""
         if HAS_GSPREAD:
@@ -30,7 +31,9 @@ class SheetsWriter:
                 gc = None
                 if service_account_path and os.path.exists(service_account_path):
                     gc = gspread.service_account(filename=service_account_path)
-                    return self._create_spreadsheet(gc, title, sheets_data, folder_id=folder_id)
+                    return self._create_spreadsheet(
+                        gc, title, sheets_data, folder_id=folder_id, frozen_header_sheets=frozen_header_sheets
+                    )
 
                 creds_path = (
                     Path(credentials_path)
@@ -42,7 +45,9 @@ class SheetsWriter:
                 if creds_path.exists():
                     try:
                         gc = self._get_oauth_client(creds_path, authorized_user)
-                        return self._create_spreadsheet(gc, title, sheets_data, folder_id=folder_id)
+                        return self._create_spreadsheet(
+                            gc, title, sheets_data, folder_id=folder_id, frozen_header_sheets=frozen_header_sheets
+                        )
                     except Exception as oauth_err:
                         if self._is_invalid_grant_error(oauth_err):
                             print(
@@ -52,7 +57,9 @@ class SheetsWriter:
                             if authorized_user.exists():
                                 authorized_user.unlink()
                             gc = self._run_oauth_flow(creds_path, authorized_user)
-                            return self._create_spreadsheet(gc, title, sheets_data, folder_id=folder_id)
+                            return self._create_spreadsheet(
+                                gc, title, sheets_data, folder_id=folder_id, frozen_header_sheets=frozen_header_sheets
+                            )
                         raise
 
             except Exception as e:
@@ -93,6 +100,7 @@ class SheetsWriter:
         title: str,
         sheets_data: Dict[str, List[List[Any]]],
         folder_id: Optional[str] = None,
+        frozen_header_sheets: AbstractSet[str] = frozenset(),
     ) -> str:
         target_folder_id = folder_id or DRIVE_FOLDER_ID
         if target_folder_id:
@@ -116,6 +124,8 @@ class SheetsWriter:
 
                 if rows:
                     ws.update(rows, value_input_option="USER_ENTERED")
+                if sheet_name in frozen_header_sheets:
+                    ws.freeze(rows=1)
 
         return f"Google Spreadsheet created successfully: {sh.url}"
 
