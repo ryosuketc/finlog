@@ -14,7 +14,7 @@ This document tracks upcoming features, ongoing validation milestones, and plann
 
 ---
 
-## 💴 `finlog gsu` (GSU Tax Return Calculation)
+## 💴 `finlog tax gsu` (GSU Tax Return Calculation)
 
 ### Yearly Routine & Tax Filing Verification
 - [ ] **e-Tax Verification**: Verify generated figures (給与所得, 配当所得, 外国税控除, 譲渡所得) against official National Tax Agency (国税庁 e-Tax) 確定申告 submission forms.

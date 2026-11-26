@@ -2,7 +2,7 @@
 
 ## 1. Overview & Objectives
 
-The `finlog tax` module (CLI subcommand `finlog gsu`) automates Japanese tax return calculations (確定申告) for Google Stock Units (GSU) across three tax income categories:
+The `finlog tax` module (CLI subcommand `finlog tax gsu`) automates Japanese tax return calculations (確定申告) for Google Stock Units (GSU) across three tax income categories:
 
 1. **給与所得 (Salary Income from Vests)**: Computed from vesting FMV (USD) converted at Vesting Date TTM rate.
 2. **配当所得 & 外国税控除 (Dividend Income & Foreign Tax Withheld)**: Cash dividends and US withholding tax converted at Entry Date TTM rate.
@@ -38,7 +38,7 @@ dev/finlog/
 │   │   ├── __init__.py
 │   │   ├── fx_provider.py        # Frankfurter API client & user_data/fx_cache.csv handler
 │   │   └── engine.py             # GSUTaxEngine (Total Average Cost & tax summary)
-│   ├── cli.py                    # Click CLI entrypoint (credit, gsu subcommands)
+│   ├── cli.py                    # Click CLI entrypoint (credit command, tax group with gsu)
 │   └── io/
 │       ├── csv_reader.py
 │       └── sheets_writer.py      # Google Sheets & CSV exporter
@@ -183,7 +183,7 @@ The exporter (`finlog.io.sheets_writer`) creates multi-tab Google Spreadsheets (
 ## 7. CLI Command Specification
 
 ```bash
-finlog gsu \
+finlog tax gsu \
   --vests <path_to_vests_csv> \
   --dividend <path_to_dividend_csv> \
   --sales <path_to_sales_csv> \

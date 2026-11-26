@@ -3,8 +3,8 @@ from click.testing import CliRunner
 from finlog.cli import main
 
 
-def test_cli_gsu_subcommand_sample_files(tmp_path):
-    """Test finlog gsu subcommand with tax sample files."""
+def test_cli_tax_gsu_subcommand_sample_files(tmp_path):
+    """Test finlog tax gsu subcommand with tax sample files."""
     runner = CliRunner()
     output_carryover_file = tmp_path / "carryover_2024.json"
 
@@ -12,6 +12,7 @@ def test_cli_gsu_subcommand_sample_files(tmp_path):
         result = runner.invoke(
             main,
             [
+                "tax",
                 "gsu",
                 "--vests",
                 "user_data/tax_sample/tax_report_inputs - Vests.csv",

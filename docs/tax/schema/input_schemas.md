@@ -1,7 +1,7 @@
 # Finlog Tax (GSU) Input Data Schemas & Models
 
 ## Overview
-This document specifies the input data schemas and JSON model definitions required for `finlog gsu` (Japanese tax return calculations for Google Stock Units).
+This document specifies the input data schemas and JSON model definitions required for `finlog tax gsu` (Japanese tax return calculations for Google Stock Units).
 
 The system accepts three CSV inputs (Vests, Dividend, Sales) and one optional JSON input (Carryover from previous year).
 

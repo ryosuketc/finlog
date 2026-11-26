@@ -148,7 +148,13 @@ def credit(
     click.echo(f"\n{output_msg}")
 
 
-@main.command()
+@main.group()
+def tax():
+    """Japanese tax return (確定申告) commands."""
+    pass
+
+
+@tax.command()
 @click.option("--vests", type=click.Path(exists=True), required=True, help="Path to Vests CSV file")
 @click.option("--dividend", type=click.Path(exists=True), required=True, help="Path to Dividend CSV file")
 @click.option("--sales", type=click.Path(exists=True), required=True, help="Path to Sales CSV file")
@@ -172,7 +178,7 @@ def gsu(
     folder_id: Optional[str],
 ):
     """Calculate Japanese tax return (確定申告) tables for Google Stock Units (GSU)."""
-    click.echo(f"Processing finlog gsu: vests={vests}, dividend={dividend}, sales={sales}")
+    click.echo(f"Processing finlog tax gsu: vests={vests}, dividend={dividend}, sales={sales}")
 
     # 1. Read raw CSV lines
     vests_lines = read_csv_lines(vests)

@@ -5,13 +5,13 @@
 > 
 > `finlog` is an experimental internal tool under active development:
 > - **`finlog credit`**: Must be validated and corrected through regular monthly reconciliation of real credit card statements against personal finance logs.
-> - **`finlog gsu`**: Must be validated and verified through actual annual Japanese tax return filings (確定申告).
+> - **`finlog tax gsu`**: Must be validated and verified through actual annual Japanese tax return filings (確定申告).
 > 
 > **DO NOT rely solely on this tool for official tax reporting or financial auditing without manually verifying all generated figures!**
 
 **finlog** is a modular Python CLI tool for personal finance management:
 1. **Credit Card Reconciliation (`finlog credit`)**: Matches personal finance log entries (e.g. **Zaim** CSV exports) against credit card statements (**ANA VISA Platinum**, **Amex Proper**, etc.) to identify unmatched or suspicious charges.
-2. **Google Stock Units (GSU) Tax Calculator (`finlog gsu`)**: Automates Japanese tax return calculations (確定申告) for Google Stock Units (GSU), computing **給与所得 (Salary Income)**, **配当所得 & 外国税控除 (Dividend Income & Foreign Tax Withheld)**, and **譲渡所得 (Capital Gains)** using the Total Average Cost method (総平均法).
+2. **Google Stock Units (GSU) Tax Calculator (`finlog tax gsu`)**: Automates Japanese tax return calculations (確定申告) for Google Stock Units (GSU), computing **給与所得 (Salary Income)**, **配当所得 & 外国税控除 (Dividend Income & Foreign Tax Withheld)**, and **譲渡所得 (Capital Gains)** using the Total Average Cost method (総平均法).
 
 ---
 
@@ -26,7 +26,7 @@
 
 
 
-### 💴 GSU Tax Calculator (`finlog gsu`)
+### 💴 GSU Tax Calculator (`finlog tax gsu`)
 - 📈 **Total Average Cost Method (総平均法)**: Chronologically tracks stock acquisitions (Vests + Dividend reinvestments) and sales to calculate average acquisition cost per share in JPY.
 - 💱 **Automated FX Rate Management**: Retrieves historical USD/JPY rates via Frankfurter API with preceding business day fallback, computes TTS (`TTM + 1.0`) and TTB (`TTM - 1.0`), and caches daily rates to `user_data/fx_cache.csv`.
 - 🔄 **Year-over-Year JSON Carryover**: Seamlessly saves and loads stock inventory state (`--carryover`, `--output-carryover`) across tax years:
@@ -104,10 +104,10 @@ finlog credit \
 
 ---
 
-### 2. GSU Tax Calculation (`finlog gsu`)
+### 2. GSU Tax Calculation (`finlog tax gsu`)
 
 ```bash
-finlog gsu \
+finlog tax gsu \
   --vests user_data/tax_sample/tax_report_inputs\ -\ Vests.csv \
   --dividend user_data/tax_sample/tax_report_inputs\ -\ Dividend.csv \
   --sales user_data/tax_sample/tax_report_inputs\ -\ Sales.csv \
@@ -115,7 +115,7 @@ finlog gsu \
   --output-carryover user_data/carryover_2024.json
 ```
 
-#### CLI Options (`finlog gsu`)
+#### CLI Options (`finlog tax gsu`)
 
 | Option | Description | Default |
 | :--- | :--- | :--- |

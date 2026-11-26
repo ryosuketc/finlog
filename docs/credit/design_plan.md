@@ -31,7 +31,7 @@ dev/finlog/
 ├── finlog/                     # Core Python package
 │   ├── __init__.py
 │   ├── config.py               # Static configuration constants (e.g. DRIVE_FOLDER_ID)
-│   ├── cli.py                  # Click CLI entrypoint with credit and gsu subcommands
+│   ├── cli.py                  # Click CLI entrypoint with the credit command and the tax group (gsu)
 │   ├── io/
 │   │   ├── csv_reader.py       # Encoding-aware CSV reader (UTF-8, Shift_JIS/CP932)
 │   │   └── sheets_writer.py    # Google Sheets API exporter (gspread + OAuth)
