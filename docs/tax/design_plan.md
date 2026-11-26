@@ -36,7 +36,7 @@ dev/finlog/
 │   │   └── tax.py                # VestsParser, DividendParser, SalesParser
 │   ├── tax/
 │   │   ├── __init__.py
-│   │   ├── fx_provider.py        # Frankfurter API client & user_data/fx_cache.csv handler
+│   │   ├── fx_provider.py        # MURC rate page (Frankfurter fallback) & user_data/fx_cache.csv handler
 │   │   └── engine.py             # GSUTaxEngine (Total Average Cost & tax summary)
 │   ├── cli.py                    # Click CLI entrypoint (credit command, tax group with gsu)
 │   └── io/
@@ -127,12 +127,10 @@ class AcquisitionTimelineRow:
 ## 4. FX Rate Management (`finlog/tax/fx_provider.py`)
 
 ### Requirements & Strategy
-1. **Source**: Fetches USD/JPY daily exchange rates from [Frankfurter API](https://www.frankfurter.app/).
-2. **Weekend/Holiday Fallback**: Automatically falls back to the nearest preceding business day rate.
-3. **Caching**: Reads and writes rates to `user_data/fx_cache.csv`.
-4. **Calculations**:
-   - $\text{TTS} = \text{TTM} + 1.0 \text{ JPY}$
-   - $\text{TTB} = \text{TTM} - 1.0 \text{ JPY}$
+1. **Source**: Fetches USD/JPY daily TTS, TTB, and TTM from the [MURC historical rate page](https://www.murc-kawasesouba.jp/fx/past_3month.php) (三菱UFJリサーチ&コンサルティング), the source cited in past tax returns. Pages for any date since 1990 are available.
+2. **Fallback**: If MURC has no rate, falls back to the [Frankfurter API](https://www.frankfurter.app/) (ECB reference rate as TTM, with $\text{TTS} = \text{TTM} + 1.0$ and $\text{TTB} = \text{TTM} - 1.0$). The source column marks these rows. If neither source has a rate, the command fails with `FXRateUnavailableError` instead of using a made-up rate.
+3. **Weekend/Holiday Fallback**: Uses the nearest preceding business day (up to 6 days back). The source column records the publication date, for example `MURC (2025-01-24)`.
+4. **Caching**: Reads and writes rates to `user_data/fx_cache.csv`. Only MURC rows are reused. Rows from other sources are fetched again, so they are replaced once MURC is reachable.
 5. **Cache Control**: Controlled via CLI flag `--use-cache / --no-cache` (default: `--use-cache`).
 
 ---

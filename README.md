@@ -28,7 +28,7 @@
 
 ### 💴 GSU Tax Calculator (`finlog tax gsu`)
 - 📈 **Total Average Cost Method (総平均法)**: Chronologically tracks stock acquisitions (Vests + Dividend reinvestments) and sales to calculate average acquisition cost per share in JPY.
-- 💱 **Automated FX Rate Management**: Retrieves historical USD/JPY rates via Frankfurter API with preceding business day fallback, computes TTS (`TTM + 1.0`) and TTB (`TTM - 1.0`), and caches daily rates to `user_data/fx_cache.csv`.
+- 💱 **Automated FX Rate Management**: Retrieves historical USD/JPY TTS, TTB, and TTM from the MURC (三菱UFJリサーチ&コンサルティング) rate page with preceding business day fallback, falls back to the Frankfurter API (TTS/TTB = TTM ± 1.0) only when MURC has no rate, and caches daily rates to `user_data/fx_cache.csv`.
 - 🔄 **Year-over-Year JSON Carryover**: Seamlessly saves and loads stock inventory state (`--carryover`, `--output-carryover`) across tax years:
   ```json
   {
