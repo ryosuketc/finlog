@@ -272,14 +272,17 @@ def _format_credit_view_table(entries: List[Dict[str, Any]]) -> List[List[Any]]:
     header = [
         "transaction_id",
         "card_name",
+        "cardholder",
+        "card_number_suffix",
         "date",
         "amount",
         "payee_merchant",
-        "cardholder",
-        "card_number_suffix",
         "note",
         "match_status",
         "matched_transaction_id",
+        "manual_review",
+        "manual_fix",
+        "manual_note",
     ]
     rows = [header]
     for d in entries:

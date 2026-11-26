@@ -118,3 +118,61 @@ def test_cli_credit_amex_reformatted_sheet_matches_raw(tmp_path):
     assert [",".join(r) for r in sheets["Raw Credit Card Log"]] == raw_lines
     assert sheets["Reformatted Credit Card Log"] == sheets["Raw Credit Card Log"]
 
+
+
+CREDIT_VIEW_HEADER = [
+    "transaction_id",
+    "card_name",
+    "cardholder",
+    "card_number_suffix",
+    "date",
+    "amount",
+    "payee_merchant",
+    "note",
+    "match_status",
+    "matched_transaction_id",
+    "manual_review",
+    "manual_fix",
+    "manual_note",
+]
+
+
+def test_cli_credit_visa_credit_view_column_order(tmp_path):
+    card_path = tmp_path / "visa.csv"
+    card_path.write_text(
+        "\n".join([
+            "山田　太郎　様,1234-56**-****-****,ＡＮＡＶＩＳＡプラチナプレミアム",
+            "2026/10/02,店舗Ａ,100,１,１,100,",
+            ",,,,,100",
+        ]) + "\n",
+        encoding="utf-8",
+    )
+    zaim_path = tmp_path / "zaim.csv"
+    zaim_path.write_text("\n".join(ZAIM_LINES) + "\n", encoding="utf-8")
+
+    credit_view = _run_credit_and_capture_sheets(card_path, zaim_path, "visa")["Credit View"]
+
+    assert credit_view == [
+        CREDIT_VIEW_HEADER,
+        ["VISA-00001", "ANA VISA Platinum", "山田 太郎 様", "1234-56**", "2026-10-02", 100, "店舗A", "", "Unmatched", "", "", "", ""],
+    ]
+
+
+def test_cli_credit_amex_credit_view_column_order(tmp_path):
+    card_path = tmp_path / "amex.csv"
+    card_path.write_text(
+        "\n".join([
+            "ご利用日,データ処理日,ご利用内容,カード会員様名,会員番号 #,金額",
+            "2026/06/21,2026/06/21,Amazon,TARO YAMADA,-11111,1000",
+        ]) + "\n",
+        encoding="utf-8",
+    )
+    zaim_path = tmp_path / "zaim.csv"
+    zaim_path.write_text("\n".join(ZAIM_LINES) + "\n", encoding="utf-8")
+
+    credit_view = _run_credit_and_capture_sheets(card_path, zaim_path, "amex")["Credit View"]
+
+    assert credit_view == [
+        CREDIT_VIEW_HEADER,
+        ["AMEX-00001", "Amex Proper", "TARO YAMADA", "-11111", "2026-06-21", 1000, "Amazon", "", "Unmatched", "", "", "", ""],
+    ]
