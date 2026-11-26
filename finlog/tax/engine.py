@@ -18,6 +18,10 @@ def round_jpy(val: Decimal) -> Decimal:
     return val.quantize(Decimal("1"), rounding=ROUND_HALF_UP)
 
 
+class InsufficientSharesError(ValueError):
+    """Raised when a sale exceeds the shares held, usually because the carryover or an input is missing."""
+
+
 def ceil_jpy(val: Decimal) -> Decimal:
     """Round a yearly JPY total up (away from zero) to an integer, like ROUNDUP in the past tax sheets."""
     return val.quantize(Decimal("1"), rounding=ROUND_UP)
@@ -300,6 +304,11 @@ class GSUTaxEngine:
                 )
 
             elif event_type == "SALE":
+                if shares > current_shares:
+                    raise InsufficientSharesError(
+                        f"{date.isoformat()}: selling {shares} shares, but only {current_shares} are held. "
+                        "Check --carryover and the input files."
+                    )
                 gross_proceeds = round_jpy(shares * price_usd * fx.ttb)
                 fee_usd = getattr(orig, "fee_usd", Decimal("0"))
                 fee_jpy = round_jpy(fee_usd * fx.ttb) if fee_usd > Decimal("0") else Decimal("0")

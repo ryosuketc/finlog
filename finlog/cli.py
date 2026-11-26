@@ -14,8 +14,8 @@ from finlog.parsers.amex import AmexParser
 from finlog.parsers.visa import VisaParser, reformat_visa_rows
 from finlog.parsers.tax import VestsParser, DividendParser, SalesParser
 from finlog.models.tax import CarryoverState
-from finlog.tax.fx_provider import FXProvider
-from finlog.tax.engine import GSUTaxEngine, GSUTaxCalculationResult, round_2dec
+from finlog.tax.fx_provider import FXProvider, FXRateUnavailableError
+from finlog.tax.engine import GSUTaxEngine, GSUTaxCalculationResult, InsufficientSharesError, round_2dec
 from finlog.matching.engine import ReconciliationEngine
 from finlog.config import get_drive_folder_id
 
@@ -209,12 +209,15 @@ def gsu(
     # 4. Run Tax Calculation Engine
     fx_provider = FXProvider(use_cache=use_cache)
     engine = GSUTaxEngine(fx_provider=fx_provider)
-    result = engine.process(
-        vests=vest_records,
-        dividends=dividend_records,
-        sales=sale_records,
-        carryover=initial_carryover,
-    )
+    try:
+        result = engine.process(
+            vests=vest_records,
+            dividends=dividend_records,
+            sales=sale_records,
+            carryover=initial_carryover,
+        )
+    except (InsufficientSharesError, FXRateUnavailableError) as e:
+        raise click.ClickException(str(e)) from e
 
     # 5. Save output carryover JSON
     output_carryover_path = Path(output_carryover) if output_carryover else Path(f"user_data/carryover_{result.tax_year}.json")

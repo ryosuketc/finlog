@@ -1,5 +1,8 @@
 import datetime
 from decimal import Decimal
+
+import pytest
+
 from finlog.models.tax import (
     CarryoverState,
     VestRecord,
@@ -8,7 +11,7 @@ from finlog.models.tax import (
     FXRateRecord,
 )
 from finlog.tax.fx_provider import FXProvider
-from finlog.tax.engine import GSUTaxEngine
+from finlog.tax.engine import GSUTaxEngine, InsufficientSharesError
 
 
 class DummyFXProvider(FXProvider):
@@ -118,3 +121,26 @@ def test_total_average_cost_worked_example():
     assert res.timeline_rows[3].running_shares == Decimal("105")
     assert res.timeline_rows[3].fee_usd == Decimal("10")
     assert res.timeline_rows[3].fee_jpy == Decimal("10")
+
+
+def test_sale_larger_than_holdings_raises():
+    """A sale must not drive holdings negative; that means the carryover or inputs are missing."""
+    vests = [
+        VestRecord(
+            award_date=datetime.date(2024, 1, 1),
+            vesting_date=datetime.date(2025, 1, 1),
+            shares=Decimal("10"),
+            fmv_usd=Decimal("100"),
+        )
+    ]
+    sales = [
+        SaleRecord(
+            execution_date=datetime.date(2025, 2, 1),
+            price_usd=Decimal("120"),
+            quantity=Decimal("10.5"),
+        )
+    ]
+    engine = GSUTaxEngine(fx_provider=DummyFXProvider())
+
+    with pytest.raises(InsufficientSharesError, match=r"2025-02-01: selling 10.5 shares, but only 10 are held"):
+        engine.process(vests=vests, dividends=[], sales=sales, carryover=None, tax_year=2025)
