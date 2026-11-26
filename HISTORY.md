@@ -182,6 +182,45 @@ produced the same 2025 year-end carryover as the golden test.
 
 **Conversation**: dd59cb8c-9c65-4302-9229-fe932913fbf2.
 
+## 2026-11-27: 医療費 export and review annotations
+
+**Summary**: Added `finlog tax iryohi export` and `finlog tax iryohi annotate`.
+Both start from the iryohi_raw sheet downloaded as CSV; the BigQuery pipeline
+still runs by hand.
+
+**Changes**:
+
+*   `export` keeps rows with `include` set and writes 医療費集計フォーム rows
+    (columns B to J of the official form) plus a Checks tab.
+*   Checks: unexpected category values, no category, form length limits, no
+    receipt (except 交通費), refund larger than the amount, `need_data_fix`,
+    and mixed years.
+*   `annotate` merges a suggestions CSV from a Jetski review into the sheet and
+    highlights rows where the suggestion is unsure or disagrees with `include`.
+*   Review rules and the suggestions format:
+    [docs/tax/iryohi_review.md](docs/tax/iryohi_review.md).
+*   The 2025 GSU sheet was corrected, and the golden expectations were
+    updated to match.
+
+**Key decisions**:
+
+*   CSV input instead of reading Google Sheets directly, so the commands work
+    without extra sign-in. Direct reading is on the ROADMAP.
+*   Suggestions must repeat the payee and amount of their row. `annotate`
+    stops on a mismatch, so suggestions cannot land on shifted rows.
+*   Unexpected category values are dropped from the form and reported, not
+    passed through.
+
+**Verification**: 97 tests passed. The golden test rebuilds the rows and the
+total submitted for 2025. All rows match except one hand-added transport row
+whose category column held a station name; export now reports it. The 2025
+data also shows rows without a category, rows without a receipt, payee names
+over the 20-character limit, and rows with `need_data_fix`.
+
+**Commits**: 95168ae1, e342af88.
+
+**Conversation**: dd59cb8c-9c65-4302-9229-fe932913fbf2.
+
 ## Open items
 
 See [ROADMAP.md](ROADMAP.md) for the full list. Main items:
